@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
-import 'package:frontend_flutter/controllers/auth_controller.dart';
-import 'package:frontend_flutter/controllers/user_lokasi_controller.dart';
+import 'package:myabsensi_mobile/controllers/auth_controller.dart';
+import 'package:myabsensi_mobile/controllers/user_lokasi_controller.dart';
 import 'package:get/get.dart';
 import 'riwayat_list_widget.dart';
 

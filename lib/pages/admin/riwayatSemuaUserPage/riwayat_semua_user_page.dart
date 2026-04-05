@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:frontend_flutter/controllers/admin_absensi_controller.dart';
-import 'package:frontend_flutter/controllers/auth_controller.dart';
-import 'package:frontend_flutter/pages/admin/riwayatSemuaUserPage/widget/admin_absensi_card_widget.dart';
-import 'package:frontend_flutter/pages/admin/riwayatSemuaUserPage/widget/admin_detail_dialog.dart';
-import 'package:frontend_flutter/pages/admin/riwayatSemuaUserPage/widget/admin_filter_widget.dart';
-import 'package:frontend_flutter/pages/admin/riwayatSemuaUserPage/widget/admin_formatter.dart';
-import 'package:frontend_flutter/pages/admin/riwayatSemuaUserPage/widget/admin_summary_widget.dart';
-import 'package:frontend_flutter/pages/admin/riwayatSemuaUserPage/widget/admin_user_header_widget.dart';
+import 'package:myabsensi_mobile/controllers/admin_absensi_controller.dart';
+import 'package:myabsensi_mobile/controllers/auth_controller.dart';
+import 'package:myabsensi_mobile/pages/admin/riwayatSemuaUserPage/widget/admin_absensi_card_widget.dart';
+import 'package:myabsensi_mobile/pages/admin/riwayatSemuaUserPage/widget/admin_detail_dialog.dart';
+import 'package:myabsensi_mobile/pages/admin/riwayatSemuaUserPage/widget/admin_filter_widget.dart';
+import 'package:myabsensi_mobile/pages/admin/riwayatSemuaUserPage/widget/admin_formatter.dart';
+import 'package:myabsensi_mobile/pages/admin/riwayatSemuaUserPage/widget/admin_summary_widget.dart';
+import 'package:myabsensi_mobile/pages/admin/riwayatSemuaUserPage/widget/admin_user_header_widget.dart';
 import 'package:get/get.dart';
 
 class RiwayatSemuaUserPage extends StatelessWidget {

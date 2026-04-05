@@ -3,16 +3,31 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
 import '../models/user_model.dart';
+import 'app_config.dart';
 import 'auth_controller.dart';
 
 class UserController extends GetxController {
-  final String baseUrl = 'http://192.168.1.8:8000/api';
-  // final String baseUrl = 'http://10.0.2.2:8000/api';
-
   var users = <UserModel>[].obs;
   var isLoading = false.obs;
 
   final AuthController authController = Get.find<AuthController>();
+
+  String _baseUrl = '';
+
+  @override
+  void onInit() {
+    super.onInit();
+    _initBaseUrl();
+  }
+
+  Future<void> _initBaseUrl() async {
+    _baseUrl = await AppConfig.getBaseUrl();
+  }
+
+  Future<String> get _resolvedBaseUrl async {
+    if (_baseUrl.isEmpty) _baseUrl = await AppConfig.getBaseUrl();
+    return _baseUrl;
+  }
 
   Map<String, String> get _authHeaders => {
     'Accept': 'application/json',
@@ -23,7 +38,6 @@ class UserController extends GetxController {
     try {
       isLoading.value = true;
 
-      // Cek token
       if (authController.token.isEmpty) {
         Get.snackbar(
           'Error',
@@ -34,6 +48,7 @@ class UserController extends GetxController {
         return;
       }
 
+      final baseUrl = await _resolvedBaseUrl;
       final res = await http.get(
         Uri.parse('$baseUrl/admin/users'),
         headers: _authHeaders,
@@ -81,6 +96,7 @@ class UserController extends GetxController {
         return;
       }
 
+      final baseUrl = await _resolvedBaseUrl;
       print('Register user dengan token: ${authController.token.value}');
       print('User yang login: ${authController.user}');
       print('Data register: name=$name, email=$email, role=$role');
@@ -156,7 +172,6 @@ class UserController extends GetxController {
     try {
       isLoading.value = true;
 
-      // CEK TOKEN
       if (authController.token.isEmpty) {
         Get.snackbar(
           'Error',
@@ -167,6 +182,7 @@ class UserController extends GetxController {
         return;
       }
 
+      final baseUrl = await _resolvedBaseUrl;
       print('Attempting to delete user ID: $id');
 
       final res = await http.delete(
@@ -189,7 +205,6 @@ class UserController extends GetxController {
       } else {
         final err = jsonDecode(res.body);
 
-        // Tangani kasus khusus (super admin tidak bisa dihapus)
         if (res.statusCode == 403) {
           Get.snackbar(
             'Tidak Bisa Hapus',
@@ -218,6 +233,7 @@ class UserController extends GetxController {
   void printDebugInfo() {
     print('=' * 50);
     print('USER CONTROLLER DEBUG');
+    print('BaseUrl: $_baseUrl');
     print('Total users: ${users.length}');
     print('Loading: $isLoading');
     print('Token: ${authController.token.value.isNotEmpty ? "Ada" : "Kosong"}');

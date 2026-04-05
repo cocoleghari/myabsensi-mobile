@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:frontend_flutter/controllers/auth_controller.dart';
-import 'package:frontend_flutter/controllers/user_controller.dart';
-import 'package:frontend_flutter/pages/admin/listAkun/list_akun.dart';
+import 'package:myabsensi_mobile/controllers/auth_controller.dart';
+import 'package:myabsensi_mobile/controllers/user_controller.dart';
+import 'package:myabsensi_mobile/pages/admin/listAkun/list_akun.dart';
 import 'package:get/get.dart';
 
 void main() {

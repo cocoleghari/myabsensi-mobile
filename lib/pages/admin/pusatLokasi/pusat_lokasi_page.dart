@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:frontend_flutter/pages/admin/pusatLokasi/modals/tambah_pusat_lokasi_modal.dart';
+import 'package:myabsensi_mobile/pages/admin/pusatLokasi/modals/tambah_pusat_lokasi_modal.dart';
 import 'package:get/get.dart';
 import '../../../controllers/auth_controller.dart';
 import '../../../controllers/pusat_lokasi_controller.dart';

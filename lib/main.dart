@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:frontend_flutter/pages/admin/profil_admin_page.dart';
-import 'package:frontend_flutter/pages/splash_pages.dart';
-import 'package:frontend_flutter/pages/user/riwayatAbsensiPage/riwayat_absensi_page.dart';
-import 'package:frontend_flutter/pages/user/userPage/user_page.dart';
+import 'package:myabsensi_mobile/pages/admin/profil_admin_page.dart';
+import 'package:myabsensi_mobile/pages/splash_pages.dart';
+import 'package:myabsensi_mobile/pages/user/riwayatAbsensiPage/riwayat_absensi_page.dart';
+import 'package:myabsensi_mobile/pages/user/userPage/user_page.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 

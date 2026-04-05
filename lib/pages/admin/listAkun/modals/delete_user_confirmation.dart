@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:frontend_flutter/controllers/user_controller.dart';
+import 'package:myabsensi_mobile/controllers/user_controller.dart';
 import 'package:get/get.dart';
 
 class DeleteUserConfirmation {

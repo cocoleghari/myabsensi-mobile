@@ -224,11 +224,11 @@
 //   }
 // }
 import 'package:flutter/material.dart';
-import 'package:frontend_flutter/controllers/auth_controller.dart';
-import 'package:frontend_flutter/controllers/lokasi_controller.dart';
-import 'package:frontend_flutter/pages/admin/lokasiPage/widget/lokasi_multiple_form.dart';
-import 'package:frontend_flutter/pages/admin/lokasiPage/widget/lokasi_table_widget.dart';
-import 'package:frontend_flutter/pages/admin/master_drawer.dart';
+import 'package:myabsensi_mobile/controllers/auth_controller.dart';
+import 'package:myabsensi_mobile/controllers/lokasi_controller.dart';
+import 'package:myabsensi_mobile/pages/admin/lokasiPage/widget/lokasi_multiple_form.dart';
+import 'package:myabsensi_mobile/pages/admin/lokasiPage/widget/lokasi_table_widget.dart';
+import 'package:myabsensi_mobile/pages/admin/master_drawer.dart';
 import 'package:get/get.dart';
 
 class LokasiPage extends StatelessWidget {

@@ -122,7 +122,7 @@ class RiwayatFormatter {
     if (path.startsWith('http')) {
       if (path.contains('localhost')) {
         // return path.replaceFirst('localhost', '192.168.1.9:8000');
-        return path.replaceFirst('localhost', '192.168.95.243:8000');
+        return path.replaceFirst('localhost', '192.168.100.104:8000');
         // return path.replaceFirst('localhost', '10.0.2.2:8000');
       }
       return path;

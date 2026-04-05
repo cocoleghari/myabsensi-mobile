@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:frontend_flutter/controllers/user_lokasi_controller.dart';
-import 'package:frontend_flutter/pages/user/riwayatAbsensiPage/utils/riwayat_formatter.dart';
-import 'package:frontend_flutter/pages/user/riwayatAbsensiPage/widget/riwayat_card_widget.dart';
-import 'package:frontend_flutter/pages/user/riwayatAbsensiPage/widget/riwayat_detail_dialog.dart';
-import 'package:frontend_flutter/pages/user/riwayatAbsensiPage/widget/riwayat_empty_widget.dart';
-import 'package:frontend_flutter/pages/user/riwayatAbsensiPage/widget/riwayat_loading_widget.dart';
+import 'package:myabsensi_mobile/controllers/user_lokasi_controller.dart';
+import 'package:myabsensi_mobile/pages/user/riwayatAbsensiPage/utils/riwayat_formatter.dart';
+import 'package:myabsensi_mobile/pages/user/riwayatAbsensiPage/widget/riwayat_card_widget.dart';
+import 'package:myabsensi_mobile/pages/user/riwayatAbsensiPage/widget/riwayat_detail_dialog.dart';
+import 'package:myabsensi_mobile/pages/user/riwayatAbsensiPage/widget/riwayat_empty_widget.dart';
+import 'package:myabsensi_mobile/pages/user/riwayatAbsensiPage/widget/riwayat_loading_widget.dart';
 import 'package:get/get.dart';
 
 class RiwayatAbsensiPage extends StatelessWidget {

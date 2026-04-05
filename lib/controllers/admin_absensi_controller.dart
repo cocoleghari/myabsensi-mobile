@@ -3,14 +3,11 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
+import 'app_config.dart';
 import 'auth_controller.dart';
 
 class AdminAbsensiController extends GetxController {
   final auth = Get.find<AuthController>();
-
-  // final String baseUrl = 'http://192.168.95.243:8000/api';
-  final String baseUrl = 'http://192.168.1.8:8000/api';
-  // final String baseUrl = 'http://10.0.2.2:8000/api';
 
   var semuaAbsensi = <Map<String, dynamic>>[].obs;
   var semuaUsers = <Map<String, dynamic>>[].obs;
@@ -20,9 +17,21 @@ class AdminAbsensiController extends GetxController {
 
   var selectedUserId = ''.obs;
 
+  String _baseUrl = '';
+
   @override
   void onInit() {
     super.onInit();
+    _initBaseUrl();
+  }
+
+  Future<void> _initBaseUrl() async {
+    _baseUrl = await AppConfig.getBaseUrl();
+  }
+
+  Future<String> get _resolvedBaseUrl async {
+    if (_baseUrl.isEmpty) _baseUrl = await AppConfig.getBaseUrl();
+    return _baseUrl;
   }
 
   Future<void> fetchAllUsers() async {
@@ -34,6 +43,7 @@ class AdminAbsensiController extends GetxController {
     isLoadingUsers.value = true;
 
     try {
+      final baseUrl = await _resolvedBaseUrl;
       print('Fetching all users');
 
       final response = await http
@@ -88,6 +98,7 @@ class AdminAbsensiController extends GetxController {
     errorMessage.value = '';
 
     try {
+      final baseUrl = await _resolvedBaseUrl;
       print('Fetching all absensi');
 
       String url = '$baseUrl/admin/absensi/all';
@@ -154,6 +165,7 @@ class AdminAbsensiController extends GetxController {
     }
 
     try {
+      final baseUrl = await _resolvedBaseUrl;
       print('Deleting absensi ID: $id');
 
       final response = await http
@@ -326,6 +338,7 @@ class AdminAbsensiController extends GetxController {
   void printDebugInfo() {
     print('=' * 50);
     print('ADMIN ABSENSI CONTROLLER');
+    print('BaseUrl: $_baseUrl');
     print('Token: ${auth.token.isNotEmpty ? "Ada" : "Kosong"}');
     print('Total Users: ${semuaUsers.length}');
     print('Total Absensi: ${semuaAbsensi.length}');

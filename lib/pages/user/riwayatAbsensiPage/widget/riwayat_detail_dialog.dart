@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:frontend_flutter/pages/user/riwayatAbsensiPage/utils/riwayat_formatter.dart';
+import 'package:myabsensi_mobile/pages/user/riwayatAbsensiPage/utils/riwayat_formatter.dart';
 import 'package:get/get.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 class RiwayatDetailDialog {
-  static const String baseUrl = 'http://192.168.95.243:8000/api';
+  static const String baseUrl = 'http://192.168.0.103:8000/api';
 
   static void show({
     required BuildContext context,

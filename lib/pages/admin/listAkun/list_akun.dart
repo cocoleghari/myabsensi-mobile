@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:frontend_flutter/controllers/auth_controller.dart';
-import 'package:frontend_flutter/controllers/user_controller.dart';
-import 'package:frontend_flutter/pages/admin/listAkun/widget/akun_action_buttons.dart';
-import 'package:frontend_flutter/pages/admin/listAkun/widget/akun_header_widget.dart';
-import 'package:frontend_flutter/pages/admin/listAkun/widget/akun_info_card.dart';
-import 'package:frontend_flutter/pages/admin/listAkun/widget/akun_table_widget.dart';
-import 'package:frontend_flutter/pages/admin/master_drawer.dart';
+import 'package:myabsensi_mobile/controllers/auth_controller.dart';
+import 'package:myabsensi_mobile/controllers/user_controller.dart';
+import 'package:myabsensi_mobile/pages/admin/listAkun/widget/akun_action_buttons.dart';
+import 'package:myabsensi_mobile/pages/admin/listAkun/widget/akun_header_widget.dart';
+import 'package:myabsensi_mobile/pages/admin/listAkun/widget/akun_info_card.dart';
+import 'package:myabsensi_mobile/pages/admin/listAkun/widget/akun_table_widget.dart';
+import 'package:myabsensi_mobile/pages/admin/master_drawer.dart';
 import 'package:get/get.dart';
 
 class ListAkunPage extends GetView<AuthController> {

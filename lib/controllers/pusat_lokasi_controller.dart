@@ -3,12 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
 import '../models/pusat_lokasi_model.dart';
+import 'app_config.dart';
 import 'auth_controller.dart';
 
 class PusatLokasiController extends GetxController {
   final auth = Get.find<AuthController>();
-  final String baseUrl = 'http://192.168.1.8:8000/api';
-  // final String baseUrl = 'http://10.0.2.2:8000/api';
 
   var pusatLokasis = <PusatLokasiModel>[].obs;
   var filteredLokasis = <PusatLokasiModel>[].obs;
@@ -24,10 +23,22 @@ class PusatLokasiController extends GetxController {
   var selectedIds = <int>[].obs;
   var isSelectionMode = false.obs;
 
+  String _baseUrl = '';
+
   @override
   void onInit() {
     super.onInit();
+    _initAndLoad();
+  }
+
+  Future<void> _initAndLoad() async {
+    _baseUrl = await AppConfig.getBaseUrl();
     fetchPusatLokasi();
+  }
+
+  Future<String> get _resolvedBaseUrl async {
+    if (_baseUrl.isEmpty) _baseUrl = await AppConfig.getBaseUrl();
+    return _baseUrl;
   }
 
   Map<String, String> get _authHeaders {
@@ -47,6 +58,7 @@ class PusatLokasiController extends GetxController {
     errorMessage.value = '';
 
     try {
+      final baseUrl = await _resolvedBaseUrl;
       String url = '$baseUrl/admin/pusat-lokasi';
       bool hasParam = false;
 
@@ -144,6 +156,7 @@ class PusatLokasiController extends GetxController {
     isSubmitting.value = true;
 
     try {
+      final baseUrl = await _resolvedBaseUrl;
       print('Creating pusat lokasi: $namaLokasi');
 
       final response = await http
@@ -162,7 +175,6 @@ class PusatLokasiController extends GetxController {
       print('Response body: ${response.body}');
 
       if (response.statusCode == 201) {
-        // Refresh data
         await fetchPusatLokasi();
 
         Get.snackbar(
@@ -178,7 +190,6 @@ class PusatLokasiController extends GetxController {
         final errorData = jsonDecode(response.body);
         String errorMsg = errorData['message'] ?? 'Gagal menambahkan data';
 
-        // Tampilkan error validasi jika ada
         if (errorData['errors'] != null) {
           final errors = errorData['errors'] as Map;
           final firstError = errors.values.first;
@@ -225,6 +236,7 @@ class PusatLokasiController extends GetxController {
     isSubmitting.value = true;
 
     try {
+      final baseUrl = await _resolvedBaseUrl;
       print('Updating pusat lokasi ID: $id');
 
       Map<String, dynamic> body = {};
@@ -276,6 +288,7 @@ class PusatLokasiController extends GetxController {
     }
 
     try {
+      final baseUrl = await _resolvedBaseUrl;
       print('Deleting pusat lokasi ID: $id');
 
       final response = await http
@@ -330,6 +343,7 @@ class PusatLokasiController extends GetxController {
     }
 
     try {
+      final baseUrl = await _resolvedBaseUrl;
       print('Deleting multiple: ${selectedIds.length} items');
 
       final response = await http

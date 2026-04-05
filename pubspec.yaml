@@ -1,4 +1,4 @@
-name: frontend_flutter
+name: myabsensi_mobile
 description: "A new Flutter project."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
@@ -39,7 +39,6 @@ dependencies:
   open_file: ^3.5.10
   excel: ^2.0.7
   font_awesome_flutter: ^10.4.0
-  camera: ^0.10.0+4
   geolocator: ^9.0.2
   firebase_core: ^4.0.0
   firebase_messaging: ^16.0.0
@@ -53,6 +52,8 @@ dependencies:
   google_mlkit_face_detection: ^0.11.0
   geocoding: ^2.1.0
   url_launcher: ^6.1.14
+  device_info_plus: ^10.0.0
+  camera: ^0.11.0+2
   # google_maps_webservice: ^0.0.20
 
   # The following adds the Cupertino Icons font to your application.

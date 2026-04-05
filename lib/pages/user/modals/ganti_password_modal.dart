@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:frontend_flutter/controllers/auth_controller.dart';
+import 'package:myabsensi_mobile/controllers/auth_controller.dart';
 import 'package:get/get.dart';
 
 class GantiPasswordModal {

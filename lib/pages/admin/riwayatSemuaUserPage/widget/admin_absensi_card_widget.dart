@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:frontend_flutter/pages/admin/riwayatSemuaUserPage/modals/admin_delete_confirmation.dart';
+import 'package:myabsensi_mobile/pages/admin/riwayatSemuaUserPage/modals/admin_delete_confirmation.dart';
 import 'admin_formatter.dart';
 
 class AdminAbsensiCardWidget extends StatelessWidget {

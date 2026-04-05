@@ -1,5 +1,4 @@
 
-
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <!-- Permission untuk lokasi (dibutuhkan untuk maps dan GPS) -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
@@ -17,8 +16,9 @@
     <uses-feature android:name="android.hardware.camera" android:required="true" />
     <uses-feature android:name="android.hardware.camera.autofocus" />
     
+    
     <application
-        android:label="frontend_flutter"
+        android:label="myabsensi_mobile"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
         android:requestLegacyExternalStorage="true"
@@ -27,7 +27,7 @@
         <!-- Google Maps API Key -->
         <meta-data
             android:name="com.google.android.geo.API_KEY"
-            android:value="AIzaSyDU51qLNKKnNETf_XJTlbcjz6jHTvsxKoA"/>
+            android:value="AIzaSyCeS6coZjCG1J1SRgk3r7NGJOz-2kG_DvA"/>
         
         <!-- File Provider untuk akses file dari kamera -->
         <provider

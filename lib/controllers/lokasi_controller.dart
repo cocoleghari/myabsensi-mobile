@@ -3,13 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
 import '../models/lokasi_model.dart';
+import 'app_config.dart';
 import 'auth_controller.dart';
 
 class LokasiController extends GetxController {
   final auth = Get.find<AuthController>();
-
-  final String baseUrl = 'http://192.168.1.8:8000/api';
-  // final String baseUrl = 'http://10.0.2.2:8000/api';
 
   var lokasis = <LokasiModel>[].obs;
   var users = <Map<String, dynamic>>[].obs;
@@ -22,16 +20,27 @@ class LokasiController extends GetxController {
   var selectedUserForMultiple = ''.obs;
   var multipleLokasiEntries = <Map<String, dynamic>>[].obs;
 
+  String _baseUrl = '';
+
   @override
   void onInit() {
     super.onInit();
+    _initAndLoad();
+    addNewLokasiEntry();
+  }
+
+  Future<void> _initAndLoad() async {
+    _baseUrl = await AppConfig.getBaseUrl();
     if (auth.token.isNotEmpty) {
       fetchLokasi();
       fetchUsers();
       fetchPusatLokasi();
     }
+  }
 
-    addNewLokasiEntry();
+  Future<String> get _resolvedBaseUrl async {
+    if (_baseUrl.isEmpty) _baseUrl = await AppConfig.getBaseUrl();
+    return _baseUrl;
   }
 
   Map<String, String> get _authHeaders => {
@@ -43,6 +52,7 @@ class LokasiController extends GetxController {
     if (auth.token.isEmpty) return;
 
     try {
+      final baseUrl = await _resolvedBaseUrl;
       final response = await http.get(
         Uri.parse('$baseUrl/admin/pusat-lokasi'),
         headers: _authHeaders,
@@ -74,6 +84,7 @@ class LokasiController extends GetxController {
 
     isLoading.value = true;
     try {
+      final baseUrl = await _resolvedBaseUrl;
       final res = await http.get(
         Uri.parse('$baseUrl/lokasi'),
         headers: _authHeaders,
@@ -97,6 +108,7 @@ class LokasiController extends GetxController {
 
     isUserLoading.value = true;
     try {
+      final baseUrl = await _resolvedBaseUrl;
       final res = await http.get(
         Uri.parse('$baseUrl/lokasi/users'),
         headers: _authHeaders,
@@ -117,6 +129,7 @@ class LokasiController extends GetxController {
 
   Future<void> deleteLokasi(int id) async {
     try {
+      final baseUrl = await _resolvedBaseUrl;
       final res = await http.delete(
         Uri.parse('$baseUrl/lokasi/$id'),
         headers: _authHeaders,
@@ -179,6 +192,7 @@ class LokasiController extends GetxController {
       int successCount = 0;
       int failedCount = 0;
 
+      final baseUrl = await _resolvedBaseUrl;
       final selectedLokasis = pusatLokasis
           .where((item) => selectedPusatLokasiIds.contains(item['id']))
           .toList();
@@ -206,7 +220,6 @@ class LokasiController extends GetxController {
         }
       }
 
-      // Reset form
       selectedPusatLokasiIds.clear();
       selectedUserForMultiple.value = '';
 
@@ -290,6 +303,8 @@ class LokasiController extends GetxController {
       isLoading.value = true;
       int successCount = 0;
       int failedCount = 0;
+
+      final baseUrl = await _resolvedBaseUrl;
 
       for (var entry in validEntries) {
         try {

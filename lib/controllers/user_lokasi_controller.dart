@@ -4,18 +4,20 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:myabsensi_mobile/pages/user/userPage/daftar_wajah_page.dart';
+import 'package:myabsensi_mobile/pages/user/userPage/preview_absensi_page.dart';
 import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
+import 'app_config.dart';
 import 'auth_controller.dart';
+import 'package:myabsensi_mobile/pages/user/userPage/camera_page.dart';
 
 class UserLokasiController extends GetxController {
   final auth = Get.find<AuthController>();
-  // final String baseUrl = 'http://10.0.2.2:8000/api';
-  final String baseUrl = 'http://192.168.1.8:8000/api';
 
   var userLokasis = <Map<String, dynamic>>[].obs;
   var isLoading = false.obs;
@@ -25,36 +27,48 @@ class UserLokasiController extends GetxController {
   var riwayatAbsensi = <Map<String, dynamic>>[].obs;
   var isLoadingRiwayat = false.obs;
 
-  // Status absen hari ini
   var sudahMasuk = false.obs;
   var sudahPulang = false.obs;
   var dataMasuk = Rxn<Map<String, dynamic>>();
   var dataPulang = Rxn<Map<String, dynamic>>();
 
-  // Lokasi real-time pengguna
   var lokasiSaatIni = ''.obs;
   var isGettingLocation = false.obs;
 
-  // Foto wajah
   var fotoWajah = Rxn<File>();
   var isTakingPhoto = false.obs;
   var isDetectingFace = false.obs;
 
-  // Untuk deteksi lokasi otomatis
   var lokasiTerpilih = Rxn<Map<String, dynamic>>();
   var jarakTerdekat = 0.0.obs;
   var isInRange = false.obs;
+
+  var wajahTerdaftar = false.obs;
+  var fotoReferensiUrl = ''.obs;
+
+  var akurasiLokasi = 0.0.obs;
+
+  String _baseUrl = '';
 
   @override
   void onInit() {
     super.onInit();
     print('UserLokasiController diinisialisasi');
-
+    _initAndLoad();
     _checkPlatform();
+  }
 
+  Future<void> _initAndLoad() async {
+    _baseUrl = await AppConfig.getBaseUrl();
     cekStatusHariIni();
-
     fetchUserLokasi();
+    cekStatusWajah();
+    _loadFotoReferensi();
+  }
+
+  Future<String> get _resolvedBaseUrl async {
+    if (_baseUrl.isEmpty) _baseUrl = await AppConfig.getBaseUrl();
+    return _baseUrl;
   }
 
   void _checkPlatform() {
@@ -74,6 +88,7 @@ class UserLokasiController extends GetxController {
         return;
       }
 
+      final baseUrl = await _resolvedBaseUrl;
       final response = await http
           .get(
             Uri.parse('$baseUrl/user/absensi/cek-status'),
@@ -106,6 +121,7 @@ class UserLokasiController extends GetxController {
     try {
       print('FETCH USER LOKASI - BACKGROUND');
 
+      final baseUrl = await _resolvedBaseUrl;
       final response = await http
           .get(
             Uri.parse('$baseUrl/user/lokasi'),
@@ -209,21 +225,19 @@ class UserLokasiController extends GetxController {
     isTakingPhoto.value = true;
 
     try {
-      final ImagePicker picker = ImagePicker();
-
-      final XFile? photo = await picker.pickImage(
-        source: ImageSource.camera,
-        preferredCameraDevice: CameraDevice.front,
-        maxWidth: 800,
-        maxHeight: 800,
-        imageQuality: 80,
+      // Buka custom camera screen — langsung kamera depan
+      final File? imageFile = await Get.to<File>(
+        () => const CameraPage(),
+        transition: Transition.downToUp,
+        duration: const Duration(milliseconds: 250),
       );
 
-      if (photo == null) {
+      // User menutup kamera tanpa foto
+      if (imageFile == null) {
         return null;
       }
 
-      File imageFile = File(photo.path);
+      // Deteksi wajah
       bool isFaceValid = await _detectFace(imageFile);
 
       if (!isFaceValid) {
@@ -239,6 +253,12 @@ class UserLokasiController extends GetxController {
       return fotoWajah.value;
     } catch (e) {
       print('Error take photo: $e');
+      Get.snackbar(
+        'Error',
+        'Gagal membuka kamera: $e',
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+      );
       return null;
     } finally {
       isTakingPhoto.value = false;
@@ -289,35 +309,174 @@ class UserLokasiController extends GetxController {
   }
 
   Future<bool> _showRetryDialog() async {
-    Completer<bool> completer = Completer();
+    final result = await Get.dialog<bool>(
+      Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        clipBehavior: Clip.antiAlias,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // ── Header berwarna ─────────────────────────────────────
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.fromLTRB(24, 28, 24, 20),
+              color: Colors.orange[50],
+              child: Column(
+                children: [
+                  Container(
+                    width: 64,
+                    height: 64,
+                    decoration: const BoxDecoration(
+                      color: Colors.white,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        Icon(
+                          Icons.camera_alt_outlined,
+                          size: 30,
+                          color: Colors.orange[700],
+                        ),
+                        Positioned(
+                          right: 10,
+                          bottom: 10,
+                          child: Container(
+                            padding: const EdgeInsets.all(2),
+                            decoration: const BoxDecoration(
+                              color: Colors.white,
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              Icons.close,
+                              size: 12,
+                              color: Colors.orange[700],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'Foto tidak valid',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.orange[800],
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Wajah tidak terdeteksi dengan jelas.\nPastikan pencahayaan cukup dan\nhadap kamera langsung.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Colors.orange[700],
+                      height: 1.5,
+                    ),
+                  ),
+                ],
+              ),
+            ),
 
-    Get.dialog(
-      AlertDialog(
-        title: const Text('Foto Tidak Valid'),
-        content: const Text(
-          'Foto tidak mengandung wajah yang jelas. Foto ulang?',
+            // ── Body ────────────────────────────────────────────────
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+              child: Column(
+                children: [
+                  // Tips box
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 10,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.grey[50],
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: Colors.grey[200]!),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(
+                          Icons.tips_and_updates_outlined,
+                          size: 15,
+                          color: Colors.grey[500],
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Foto di tempat terang  ·  Hadap kamera langsung  ·  Lepas kacamata  ·  Satu wajah saja',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey[600],
+                              height: 1.6,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 14),
+
+                  // Tombol Foto Ulang
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: () => Get.back(result: true),
+                      icon: const Icon(Icons.camera_alt, size: 18),
+                      label: const Text(
+                        'Foto Ulang',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.orange,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        elevation: 0,
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 8),
+
+                  // Tombol Batal
+                  SizedBox(
+                    width: double.infinity,
+                    child: TextButton(
+                      onPressed: () => Get.back(result: false),
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 11),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          side: BorderSide(color: Colors.grey[300]!),
+                        ),
+                      ),
+                      child: Text(
+                        'Batal',
+                        style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Get.back();
-              completer.complete(false);
-            },
-            child: const Text('Batal'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Get.back();
-              completer.complete(true);
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.blue),
-            child: const Text('Foto Ulang'),
-          ),
-        ],
       ),
+      barrierDismissible: false,
     );
 
-    return completer.future;
+    return result ?? false;
   }
 
   Future<String> getCurrentLocation() async {
@@ -342,6 +501,9 @@ class UserLokasiController extends GetxController {
         timeLimit: const Duration(seconds: 10),
       );
 
+      // Simpan akurasi
+      akurasiLokasi.value = position.accuracy;
+
       String koordinat = '${position.latitude}, ${position.longitude}';
       lokasiSaatIni.value = koordinat;
       return koordinat;
@@ -349,7 +511,7 @@ class UserLokasiController extends GetxController {
       print('Error getCurrentLocation: $e');
       Get.snackbar(
         'Error',
-        'Gagal mendapatkan lokasi Anda. Pastikan GPS aktif.',
+        'Gagal mendapatkan lokasi. Pastikan GPS aktif.',
         backgroundColor: Colors.red,
       );
       return '';
@@ -446,18 +608,21 @@ class UserLokasiController extends GetxController {
   Future<void> prosesAbsensi(String tipe) async {
     if (userLokasis.isEmpty) {
       await fetchUserLokasi();
-
       if (userLokasis.isEmpty) {
         Get.snackbar(
           'Error',
           'Belum ada lokasi absensi. Hubungi admin.',
           backgroundColor: Colors.red,
           colorText: Colors.white,
-          snackPosition: SnackPosition.TOP,
-          duration: const Duration(seconds: 3),
         );
         return;
       }
+    }
+
+    // ── CEK WAJAH TERDAFTAR ──────────────────────────────────────────
+    if (!wajahTerdaftar.value) {
+      await _showWajahBelumTerdaftarDialog();
+      return;
     }
 
     if (tipe == 'masuk' && sudahMasuk.value) {
@@ -468,7 +633,6 @@ class UserLokasiController extends GetxController {
       );
       return;
     }
-
     if (tipe == 'pulang' && sudahPulang.value) {
       Get.snackbar(
         'Info',
@@ -477,7 +641,6 @@ class UserLokasiController extends GetxController {
       );
       return;
     }
-
     if (tipe == 'pulang' && !sudahMasuk.value) {
       Get.snackbar(
         'Info',
@@ -490,29 +653,15 @@ class UserLokasiController extends GetxController {
     isSubmitting.value = true;
 
     try {
-      // 1. AMBIL LOKASI GPS
-      String titikKoordinatKamu = await getCurrentLocation();
-      if (titikKoordinatKamu.isEmpty) {
-        return;
-      }
+      // 1. Ambil koordinat
+      String koordinat = await getCurrentLocation();
+      if (koordinat.isEmpty) return;
 
-      // 2. CARI LOKASI TERDEKAT
-      final lokasiTerdekat = await cariLokasiTerdekat(titikKoordinatKamu);
+      // 2. Cari lokasi terdekat
+      final lokasiTerdekat = await cariLokasiTerdekat(koordinat);
+      if (lokasiTerdekat == null) return;
 
-      if (lokasiTerdekat == null) {
-        return;
-      }
-
-      // 3. CEK APAKAH DALAM RADIUS
-      if (!lokasiTerdekat['dalam_radius']) {
-        await _showJarakTerlaluJauhDialog(
-          lokasiTerdekat['jarak'],
-          lokasiTerdekat['lokasi'],
-        );
-        return;
-      }
-
-      // 4. AMBIL FOTO
+      // 3. Ambil foto wajah
       File? foto = await takePhotoWithFaceDetection();
       if (foto == null) {
         Get.snackbar(
@@ -523,23 +672,30 @@ class UserLokasiController extends GetxController {
         return;
       }
 
-      // 5. KIRIM KE SERVER
-      bool success = await _kirimAbsensiOtomatis(
-        lokasiTerdekat,
-        titikKoordinatKamu,
-        foto,
-        tipe,
-      );
+      // 4. Cek face recognition via backend (preview saja, belum simpan)
+      final hasilFace = await _cekFaceRecognitionSaja(foto);
 
-      if (success) {
-        // 6. TAMPILKAN DIALOG SUKSES
-        _showSuccessDialog(tipe, lokasiTerdekat);
-      }
+      // 5. Ambil URL foto referensi user
+      final fotoReferensiUrl = await _getFotoReferensiUrl();
+
+      // 6. Navigasi ke halaman preview
+      Get.to(
+        () => PreviewAbsensiPage(
+          tipe: tipe,
+          fotoAbsen: foto,
+          fotoReferensiUrl: fotoReferensiUrl,
+          lokasiTerdekat: lokasiTerdekat,
+          koordinatUser: koordinat,
+          confidenceScore: hasilFace['confidence'] ?? 0.0,
+          wajahCocok: hasilFace['verified'] ?? false,
+          akurasi: akurasiLokasi.value, // ← tambahkan ini
+        ),
+      );
     } catch (e) {
-      print('rror proses absensi: $e');
+      print('Error prosesAbsensi: $e');
       Get.snackbar(
         'Error',
-        'Terjadi kesalahan: ${e.toString()}',
+        'Terjadi kesalahan: $e',
         backgroundColor: Colors.red,
       );
     } finally {
@@ -547,13 +703,79 @@ class UserLokasiController extends GetxController {
     }
   }
 
-  Future<bool> _kirimAbsensiOtomatis(
-    Map<String, dynamic> lokasiTerpilih,
-    String titikKoordinatKamu,
-    File foto,
-    String tipe,
-  ) async {
+  // Load & cache foto referensi sekali saja
+  Future<void> _loadFotoReferensi() async {
     try {
+      if (auth.token.isEmpty) return;
+      final baseUrl = await _resolvedBaseUrl;
+      final response = await http
+          .get(
+            Uri.parse('$baseUrl/user/profil'),
+            headers: {
+              'Accept': 'application/json',
+              'Authorization': 'Bearer ${auth.token}',
+            },
+          )
+          .timeout(const Duration(seconds: 8));
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        fotoReferensiUrl.value = data['foto_wajah_url']?.toString() ?? '';
+        wajahTerdaftar.value =
+            data['wajah_terdaftar'] == true || data['wajah_terdaftar'] == 1;
+        print('Foto referensi URL: ${fotoReferensiUrl.value}');
+      }
+    } catch (e) {
+      print('Error _loadFotoReferensi: $e');
+    }
+  }
+
+  // Cek face recognition tanpa simpan absensi
+  Future<Map<String, dynamic>> _cekFaceRecognitionSaja(File foto) async {
+    try {
+      final baseUrl = await _resolvedBaseUrl;
+      var request = http.MultipartRequest(
+        'POST',
+        Uri.parse('$baseUrl/user/wajah/verifikasi'),
+      );
+      request.headers.addAll({
+        'Accept': 'application/json',
+        'Authorization': 'Bearer ${auth.token}',
+      });
+      request.files.add(
+        await http.MultipartFile.fromPath('foto_wajah', foto.path),
+      );
+
+      var streamed = await request.send().timeout(const Duration(seconds: 60));
+      var response = await http.Response.fromStream(streamed);
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      }
+      return {'verified': false, 'confidence': 0.0};
+    } catch (e) {
+      print('Error cek face: $e');
+      return {'verified': false, 'confidence': 0.0};
+    }
+  }
+
+  // Update _getFotoReferensiUrl — cukup return cache
+  Future<String> _getFotoReferensiUrl() async {
+    if (fotoReferensiUrl.value.isNotEmpty) return fotoReferensiUrl.value;
+    await _loadFotoReferensi();
+    return fotoReferensiUrl.value;
+  }
+
+  // Dipanggil dari PreviewAbsensiPage saat tap "Save Attendance"
+  Future<bool> kirimAbsensiDariPreview({
+    required Map<String, dynamic> lokasiTerpilih,
+    required String titikKoordinatKamu,
+    required File foto,
+    required String tipe,
+  }) async {
+    isSubmitting.value = true;
+    try {
+      final baseUrl = await _resolvedBaseUrl;
       var request = http.MultipartRequest(
         'POST',
         Uri.parse('$baseUrl/user/absensi/otomatis'),
@@ -575,7 +797,78 @@ class UserLokasiController extends GetxController {
         ),
       );
 
-      print('📤 Mengirim request absensi otomatis $tipe...');
+      var streamed = await request.send().timeout(const Duration(seconds: 60));
+      var response = await http.Response.fromStream(streamed);
+
+      print('Status: ${response.statusCode}');
+
+      if (response.statusCode == 201 || response.statusCode == 200) {
+        // Hanya update status, JANGAN fetch riwayat di sini
+        await cekStatusHariIni();
+        return true;
+      } else {
+        try {
+          final err = jsonDecode(response.body);
+          Get.snackbar(
+            'Gagal',
+            err['message'] ?? 'Gagal menyimpan',
+            backgroundColor: Colors.red,
+            colorText: Colors.white,
+          );
+        } catch (_) {
+          Get.snackbar(
+            'Gagal',
+            'Error ${response.statusCode}',
+            backgroundColor: Colors.red,
+            colorText: Colors.white,
+          );
+        }
+        return false;
+      }
+    } catch (e) {
+      print('Error: $e');
+      Get.snackbar(
+        'Error',
+        'Terjadi kesalahan: $e',
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+      );
+      return false;
+    } finally {
+      isSubmitting.value = false;
+    }
+  }
+
+  Future<bool> _kirimAbsensiOtomatis(
+    Map<String, dynamic> lokasiTerpilih,
+    String titikKoordinatKamu,
+    File foto,
+    String tipe,
+  ) async {
+    try {
+      final baseUrl = await _resolvedBaseUrl;
+      var request = http.MultipartRequest(
+        'POST',
+        Uri.parse('$baseUrl/user/absensi/otomatis'),
+      );
+
+      request.headers.addAll({
+        'Accept': 'application/json',
+        'Authorization': 'Bearer ${auth.token}',
+      });
+
+      request.fields['tipe_absen'] = tipe;
+      request.fields['titik_koordinat_kamu'] = titikKoordinatKamu;
+
+      request.files.add(
+        await http.MultipartFile.fromPath(
+          'foto_wajah',
+          foto.path,
+          filename: '${tipe}_${DateTime.now().millisecondsSinceEpoch}.jpg',
+        ),
+      );
+
+      print('Mengirim request absensi otomatis $tipe...');
       var streamedResponse = await request.send().timeout(
         const Duration(seconds: 15),
       );
@@ -769,7 +1062,6 @@ class UserLokasiController extends GetxController {
     );
   }
 
-  // ================= AMBIL RIWAYAT ABSENSI =================
   Future<void> fetchRiwayatAbsensi() async {
     if (auth.token.isEmpty) return;
 
@@ -778,6 +1070,7 @@ class UserLokasiController extends GetxController {
     try {
       print('Fetching riwayat absensi...');
 
+      final baseUrl = await _resolvedBaseUrl;
       final response = await http
           .get(
             Uri.parse('$baseUrl/user/absensi/riwayat'),
@@ -824,6 +1117,7 @@ class UserLokasiController extends GetxController {
     print('=' * 50);
     print('USER LOKASI CONTROLLER');
     print('Platform: ${kIsWeb ? "WEB" : "MOBILE"}');
+    print('BaseUrl: $_baseUrl');
     print('Token: ${auth.token.isNotEmpty ? "Ada" : "Kosong"}');
     print('Role: ${auth.user['role']}');
     print('Lokasi: ${userLokasis.length}');
@@ -837,5 +1131,177 @@ class UserLokasiController extends GetxController {
     print('Loading: $isLoading');
     print('Submitting: $isSubmitting');
     print('=' * 50);
+  }
+
+  // Update daftarkanWajah — simpan URL setelah berhasil daftar
+  Future<void> daftarkanWajah() async {
+    final foto = fotoWajah.value;
+    if (foto == null) {
+      Get.snackbar(
+        'Error',
+        'Ambil foto terlebih dahulu',
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+      );
+      return;
+    }
+
+    isSubmitting.value = true;
+    try {
+      final baseUrl = await _resolvedBaseUrl;
+      var request = http.MultipartRequest(
+        'POST',
+        Uri.parse('$baseUrl/user/wajah/daftarkan'),
+      );
+      request.headers.addAll({
+        'Accept': 'application/json',
+        'Authorization': 'Bearer ${auth.token}',
+      });
+      request.files.add(
+        await http.MultipartFile.fromPath(
+          'foto_wajah',
+          foto.path,
+          filename: 'wajah_${auth.user['id']}.jpg',
+        ),
+      );
+
+      var streamed = await request.send().timeout(const Duration(seconds: 20));
+      var response = await http.Response.fromStream(streamed);
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        wajahTerdaftar.value = true;
+        fotoReferensiUrl.value = data['foto_wajah_url']?.toString() ?? '';
+        fotoWajah.value = null;
+
+        Get.dialog(
+          AlertDialog(
+            title: const Icon(
+              Icons.check_circle,
+              color: Colors.green,
+              size: 60,
+            ),
+            content: const Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Wajah Berhasil Didaftarkan!',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  textAlign: TextAlign.center,
+                ),
+                SizedBox(height: 8),
+                Text(
+                  'Anda sekarang dapat melakukan absensi.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.grey),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Get.back();
+                  Get.back();
+                },
+                child: const Text('OK'),
+              ),
+            ],
+          ),
+        );
+      } else {
+        final err = jsonDecode(response.body);
+        Get.snackbar(
+          'Gagal',
+          err['message'] ?? 'Gagal mendaftarkan wajah',
+          backgroundColor: Colors.red,
+          colorText: Colors.white,
+        );
+      }
+    } catch (e) {
+      Get.snackbar('Error', 'Gagal: $e', backgroundColor: Colors.red);
+    } finally {
+      isSubmitting.value = false;
+    }
+  }
+
+  // Update cekStatusWajah — gunakan _loadFotoReferensi
+  Future<void> cekStatusWajah() async {
+    await _loadFotoReferensi();
+  }
+
+  Future<void> _showWajahBelumTerdaftarDialog() async {
+    await Get.dialog(
+      Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.orange[50],
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.face_retouching_natural,
+                  color: Colors.orange[700],
+                  size: 40,
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Wajah Belum Terdaftar',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Anda perlu mendaftarkan wajah terlebih dahulu sebelum melakukan absensi.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 13,
+                  color: Colors.grey[600],
+                  height: 1.5,
+                ),
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    Get.back();
+                    Get.to(() => const DaftarWajahPage());
+                  },
+                  icon: const Icon(Icons.face_retouching_natural),
+                  label: const Text(
+                    'Daftarkan Wajah Sekarang',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.orange,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              SizedBox(
+                width: double.infinity,
+                child: TextButton(
+                  onPressed: () => Get.back(),
+                  child: const Text('Nanti Saja'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+      barrierDismissible: false,
+    );
   }
 }

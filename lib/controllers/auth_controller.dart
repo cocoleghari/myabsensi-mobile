@@ -3,23 +3,33 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:http/http.dart' as http;
+import 'app_config.dart';
 
 class AuthController extends GetxController {
   static AuthController instance = Get.find();
 
   final box = GetStorage();
-  // final String baseUrl = 'http://192.168.95.243:8000/api';
-  // final String baseUrl = 'http://10.0.2.2:8000/api';
-  final String baseUrl = 'http://192.168.1.8:8000/api';
 
   var isLoading = false.obs;
   var token = ''.obs;
   var user = {}.obs;
 
+  String _baseUrl = '';
+
   @override
   void onInit() {
     super.onInit();
+    _initBaseUrl();
     _loadStoredData();
+  }
+
+  Future<void> _initBaseUrl() async {
+    _baseUrl = await AppConfig.getBaseUrl();
+  }
+
+  Future<String> get _resolvedBaseUrl async {
+    if (_baseUrl.isEmpty) _baseUrl = await AppConfig.getBaseUrl();
+    return _baseUrl;
   }
 
   void _loadStoredData() {
@@ -35,6 +45,7 @@ class AuthController extends GetxController {
   ) async {
     isLoading.value = true;
     try {
+      final baseUrl = await _resolvedBaseUrl;
       print('Register attempt: $name, $email, $role');
 
       final response = await http
@@ -103,6 +114,7 @@ class AuthController extends GetxController {
   Future<void> login(String email, String password) async {
     isLoading.value = true;
     try {
+      final baseUrl = await _resolvedBaseUrl;
       print('Login attempt: $email');
 
       final response = await http
@@ -186,11 +198,11 @@ class AuthController extends GetxController {
     isLoading.value = true;
 
     try {
+      final baseUrl = await _resolvedBaseUrl;
+
       final response = await http
           .post(
-            Uri.parse(
-              '$baseUrl/admin/change-password',
-            ), // ENDPOINT KHUSUS ADMIN
+            Uri.parse('$baseUrl/admin/change-password'),
             headers: {
               'Accept': 'application/json',
               'Content-Type': 'application/json',
@@ -269,6 +281,8 @@ class AuthController extends GetxController {
     isLoading.value = true;
 
     try {
+      final baseUrl = await _resolvedBaseUrl;
+
       final response = await http
           .post(
             Uri.parse('$baseUrl/user/change-password'),
@@ -335,6 +349,7 @@ class AuthController extends GetxController {
   Future<void> logout() async {
     try {
       if (token.isNotEmpty) {
+        final baseUrl = await _resolvedBaseUrl;
         print('Logout attempt');
         await http.post(
           Uri.parse('$baseUrl/logout'),
@@ -369,7 +384,7 @@ class AuthController extends GetxController {
   }
 
   Future<void> _clearUserData() async {
-    await box.erase(); // Hapus semua data storage
+    await box.erase();
     token.value = '';
     user.value = {};
   }
