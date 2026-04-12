@@ -77,11 +77,60 @@ class UserController extends GetxController {
     }
   }
 
+  Future<void> fetchAllUsers() async {
+    try {
+      isLoading.value = true;
+
+      final baseUrl = await _resolvedBaseUrl;
+
+      final res = await http.get(
+        Uri.parse('$baseUrl/user/karyawan'),
+        headers: _authHeaders,
+      );
+
+      if (res.statusCode == 200) {
+        final json = jsonDecode(res.body);
+        final list = json['data'] as List;
+        users.value = list.map((e) => UserModel.fromJson(e)).toList();
+      } else {
+        Get.snackbar(
+          'Info',
+          'Gagal memuat data karyawan (${res.statusCode})',
+          backgroundColor: Colors.orange,
+          colorText: Colors.white,
+          snackPosition: SnackPosition.BOTTOM,
+          duration: const Duration(seconds: 2),
+        );
+      }
+    } catch (e) {
+      Get.snackbar(
+        'Error',
+        'Tidak dapat terhubung ke server',
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+        snackPosition: SnackPosition.BOTTOM,
+        duration: const Duration(seconds: 2),
+      );
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
   Future<void> registerUser({
     required String name,
     required String email,
     required String password,
     required String role,
+
+    String? nik,
+    String? namaStempel,
+    DateTime? tglLahir,
+    String? jk,
+    String? alamat,
+    String? jabatan,
+    String? kantor,
+    DateTime? tglMasuk,
+    String? nomorTelp,
   }) async {
     try {
       isLoading.value = true;
@@ -113,6 +162,16 @@ class UserController extends GetxController {
           'email': email,
           'password': password,
           'role': role,
+
+          'nik': nik,
+          'nama_stempel': namaStempel,
+          'tgl_lahir': formatDate(tglLahir),
+          'jk': jk,
+          'alamat': alamat,
+          'jabatan': jabatan,
+          'kantor': kantor,
+          'tgl_masuk': formatDate(tglMasuk),
+          'nomor_telp': nomorTelp,
         }),
       );
 
@@ -238,5 +297,11 @@ class UserController extends GetxController {
     print('Loading: $isLoading');
     print('Token: ${authController.token.value.isNotEmpty ? "Ada" : "Kosong"}');
     print('=' * 50);
+  }
+
+  /// 🔧 HELPER FORMAT DATE
+  String? formatDate(DateTime? date) {
+    if (date == null) return null;
+    return date.toIso8601String().split('T').first;
   }
 }

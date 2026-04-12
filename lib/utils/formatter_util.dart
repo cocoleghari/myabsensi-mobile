@@ -131,4 +131,16 @@ class FormatterUtil {
 
     return '$cleanBaseUrl/storage/wajah/$path';
   }
+
+  /// Format bulan dan tahun: "April 2026" dalam WIB
+  static String formatBulanTahun(String tanggalStr) {
+    try {
+      final dt = _parseWaktu(tanggalStr);
+      if (dt == null) return tanggalStr;
+      final wib = _toWIB(dt);
+      return DateFormat('MMMM yyyy', 'id_ID').format(wib);
+    } catch (e) {
+      return tanggalStr;
+    }
+  }
 }

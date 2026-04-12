@@ -142,8 +142,11 @@ class _HasilAbsensiPageState extends State<HasilAbsensiPage> {
                   },
                   style: OutlinedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 16),
-                    foregroundColor: Colors.orange,
-                    side: const BorderSide(color: Colors.orange, width: 1.5),
+                    foregroundColor: const Color(0xFF1976D2),
+                    side: const BorderSide(
+                      color: const Color(0xFF1976D2),
+                      width: 1.5,
+                    ),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
@@ -177,9 +180,11 @@ class _HasilAbsensiPageState extends State<HasilAbsensiPage> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
       decoration: BoxDecoration(
-        color: isActive ? Colors.orange : Colors.transparent,
+        color: isActive ? const Color(0xFF1976D2) : Colors.transparent,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: isActive ? Colors.orange : Colors.grey[300]!),
+        border: Border.all(
+          color: isActive ? const Color(0xFF1976D2) : Colors.grey[300]!,
+        ),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,

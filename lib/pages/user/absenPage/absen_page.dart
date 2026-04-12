@@ -3,7 +3,8 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/services.dart';
 import 'package:myabsensi_mobile/controllers/auth_controller.dart';
 import 'package:myabsensi_mobile/controllers/user_lokasi_controller.dart';
-import 'package:myabsensi_mobile/pages/user/userPage/widget/info_card_widget.dart';
+import 'package:myabsensi_mobile/pages/user/absenPage/info_card_widget.dart';
+import 'package:myabsensi_mobile/pages/user/absenPage/modals/search_employee_modal.dart';
 import 'package:myabsensi_mobile/utils/formatter_util.dart';
 import 'package:get/get.dart';
 
@@ -24,7 +25,6 @@ class _AbsenPageState extends State<AbsenPage> {
     super.initState();
     _c = Get.find<UserLokasiController>();
     _auth = Get.find<AuthController>();
-    // Status bar mengikuti warna gradient biru
     SystemChrome.setSystemUIOverlayStyle(
       const SystemUiOverlayStyle(
         statusBarColor: Color(0xFF1565C0),
@@ -39,7 +39,6 @@ class _AbsenPageState extends State<AbsenPage> {
 
   @override
   void dispose() {
-    // Kembalikan status bar ke default saat meninggalkan halaman
     SystemChrome.setSystemUIOverlayStyle(
       const SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
@@ -66,45 +65,43 @@ class _AbsenPageState extends State<AbsenPage> {
         body: Center(
           child: Container(
             constraints: BoxConstraints(maxWidth: maxWidth),
-            child: Column(
-              children: [
-                // ── HEADER BIRU — FIXED, tidak ikut scroll ──
-                _buildGreetingWithHeader(),
+            child: RefreshIndicator(
+              onRefresh: () async {
+                await Future.wait([
+                  _c.cekStatusHariIni(),
+                  _c.fetchRiwayatAbsensi(),
+                ]);
+              },
+              color: const Color(0xFFFF7A30),
+              child: CustomScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                slivers: [
+                  // ── HEADER BIRU — ikut scroll ──
+                  SliverToBoxAdapter(child: _buildGreetingWithHeader()),
 
-                // ── KONTEN ABU — scrollable ──
-                Expanded(
-                  child: RefreshIndicator(
-                    onRefresh: () async {
-                      await Future.wait([
-                        _c.cekStatusHariIni(),
-                        _c.fetchRiwayatAbsensi(),
-                      ]);
-                    },
-                    color: const Color(0xFFFF7A30),
-                    child: SingleChildScrollView(
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      child: Container(
-                        decoration: const BoxDecoration(
-                          color: Color(0xFFF2F4F7),
-                          borderRadius: BorderRadius.only(
-                            topLeft: Radius.circular(28),
-                            topRight: Radius.circular(28),
-                          ),
+                  // ── KONTEN ABU — langsung di bawah header ──
+                  SliverToBoxAdapter(
+                    child: Container(
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFF2F4F7),
+                        borderRadius: BorderRadius.only(
+                          topLeft: Radius.circular(28),
+                          topRight: Radius.circular(28),
                         ),
-                        padding: const EdgeInsets.fromLTRB(16, 24, 16, 32),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _buildMainCard(),
-                            const SizedBox(height: 16),
-                            const InfoCardWidget(),
-                          ],
-                        ),
+                      ),
+                      padding: const EdgeInsets.fromLTRB(16, 24, 16, 32),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildMainCard(),
+                          const SizedBox(height: 16),
+                          const InfoCardWidget(),
+                        ],
                       ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
@@ -112,7 +109,7 @@ class _AbsenPageState extends State<AbsenPage> {
     );
   }
 
-  // ─── GREETING + HEADER (digabung dalam satu banner biru) ───────────────────
+  // ─── GREETING + HEADER ────────────────────────────────────────────────────
 
   Widget _buildGreetingWithHeader() {
     final hour = DateTime.now().hour;
@@ -154,7 +151,6 @@ class _AbsenPageState extends State<AbsenPage> {
 
       return Container(
         width: double.infinity,
-        // ← Warna biru langsung di sini, bukan dari Stack background
         decoration: const BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topLeft,
@@ -236,24 +232,7 @@ class _AbsenPageState extends State<AbsenPage> {
                           ),
                         ),
                         const SizedBox(width: 12),
-                        // Search button
-                        Container(
-                          width: 42,
-                          height: 42,
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.18),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: Colors.white.withOpacity(0.25),
-                              width: 1,
-                            ),
-                          ),
-                          child: const Icon(
-                            Icons.search,
-                            color: Colors.white,
-                            size: 20,
-                          ),
-                        ),
+                        _searchIconBtn(),
                       ],
                     ),
 
@@ -267,27 +246,10 @@ class _AbsenPageState extends State<AbsenPage> {
                     // ── Baris 2: Avatar + Nama + Ikon ──
                     Row(
                       children: [
-                        Container(
-                          width: 48,
-                          height: 48,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: Colors.white.withOpacity(0.25),
-                            border: Border.all(
-                              color: Colors.white.withOpacity(0.4),
-                              width: 2,
-                            ),
-                          ),
-                          child: Center(
-                            child: Text(
-                              initial,
-                              style: const TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ),
+                        // GANTI dengan ini:
+                        _buildHeaderAvatar(
+                          photoUrl: user['photo_url']?.toString(),
+                          initial: initial,
                         ),
                         const SizedBox(width: 12),
                         Expanded(
@@ -328,6 +290,67 @@ class _AbsenPageState extends State<AbsenPage> {
         ),
       );
     });
+  }
+
+  Widget _searchIconBtn() {
+    return GestureDetector(
+      onTap: () => SearchEmployeeModal.show(context),
+      child: Container(
+        width: 42,
+        height: 42,
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.18),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.white.withOpacity(0.3), width: 1),
+        ),
+        child: const Icon(Icons.search, color: Colors.white, size: 20),
+      ),
+    );
+  }
+
+  Widget _buildHeaderAvatar({
+    required String? photoUrl,
+    required String initial,
+  }) {
+    final hasPhoto = photoUrl != null && photoUrl.isNotEmpty;
+
+    return Container(
+      width: 48,
+      height: 48,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: Colors.white.withOpacity(0.25),
+        border: Border.all(color: Colors.white.withOpacity(0.4), width: 2),
+      ),
+      child: ClipOval(
+        child: hasPhoto
+            ? Image.network(
+                photoUrl!,
+                width: 48,
+                height: 48,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => _headerInitial(initial),
+                loadingBuilder: (_, child, progress) {
+                  if (progress == null) return child;
+                  return _headerInitial(initial);
+                },
+              )
+            : _headerInitial(initial),
+      ),
+    );
+  }
+
+  Widget _headerInitial(String initial) {
+    return Center(
+      child: Text(
+        initial,
+        style: const TextStyle(
+          fontSize: 20,
+          fontWeight: FontWeight.bold,
+          color: Colors.white,
+        ),
+      ),
+    );
   }
 
   Widget _whiteIconBtn(IconData icon) {
@@ -445,7 +468,6 @@ class _AbsenPageState extends State<AbsenPage> {
         final masuk = _c.dataMasuk.value;
         final pulang = _c.dataPulang.value;
 
-        // Waktu dalam WIB menggunakan FormatterUtil
         final waktuMasuk = masuk != null
             ? FormatterUtil.formatWaktuSimple(
                 masuk['waktu_absen']?.toString() ?? '',
@@ -457,7 +479,6 @@ class _AbsenPageState extends State<AbsenPage> {
               )
             : '--:--';
 
-        // Foto dari data absensi masuk & pulang
         final fotoMasuk = _pickFoto(masuk);
         final fotoPulang = _pickFoto(pulang);
         final initial = _initials();
@@ -594,15 +615,15 @@ class _AbsenPageState extends State<AbsenPage> {
 
         if (!sudahMasuk) {
           label = 'Absen Masuk';
-          bgColor = const Color(0xFF1976D2);
+          bgColor = const Color.fromARGB(255, 76, 159, 241);
           onTap = isSubmitting ? null : () => _c.prosesAbsensi('masuk');
         } else if (!sudahPulang) {
           label = 'Absen Pulang';
-          bgColor = const Color(0xFFFF7A30);
+          bgColor = const Color.fromARGB(255, 243, 110, 48);
           onTap = isSubmitting ? null : () => _c.prosesAbsensi('pulang');
         } else {
           label = 'Absensi Selesai';
-          bgColor = const Color(0xFF9CA3AF);
+          bgColor = const Color.fromARGB(220, 24, 185, 3);
           onTap = null;
         }
 
@@ -692,26 +713,19 @@ class _AbsenPageState extends State<AbsenPage> {
   }
 
   Widget _buildRiwayatItem(Map<String, dynamic> item, bool isLast) {
-    // Field foto di Laravel adalah 'foto_wajah' — sudah berupa full URL
     final fotoUrl = _pickFoto(item);
-
-    // Waktu dalam WIB
     final waktu = FormatterUtil.formatWaktuSimple(
       item['waktu_absen']?.toString() ?? '',
     );
-
-    // Tanggal
     final tanggalRaw =
         item['tanggal_formatted']?.toString() ??
         item['tanggal']?.toString() ??
-        item['waktu_absen']
-            ?.toString() ?? // gunakan waktu_absen jika tanggal tidak ada
+        item['waktu_absen']?.toString() ??
         item['created_at']?.toString() ??
         '';
     final tanggal = tanggalRaw.isNotEmpty
         ? _formatTanggalDisplay(tanggalRaw)
         : '-';
-
     final status = item['status']?.toString() ?? 'Has been processed';
 
     return InkWell(
@@ -727,15 +741,12 @@ class _AbsenPageState extends State<AbsenPage> {
         ),
         child: Row(
           children: [
-            // Foto absensi
             _buildNetworkAvatar(
               fotoUrl: fotoUrl,
               initial: _initials(),
               size: 52,
             ),
             const SizedBox(width: 12),
-
-            // Info
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -768,8 +779,6 @@ class _AbsenPageState extends State<AbsenPage> {
                 ],
               ),
             ),
-
-            // Status
             Text(
               status,
               style: const TextStyle(
@@ -874,7 +883,6 @@ class _AbsenPageState extends State<AbsenPage> {
 
   // ─── SHARED AVATAR WIDGET ─────────────────────────────────────────────────
 
-  /// Widget avatar universal — pakai foto URL jika ada, fallback ke inisial
   Widget _buildNetworkAvatar({
     required String? fotoUrl,
     required String initial,
@@ -930,12 +938,10 @@ class _AbsenPageState extends State<AbsenPage> {
     return name.isNotEmpty ? name[0].toUpperCase() : 'U';
   }
 
-  /// Ambil URL foto dari response API Laravel
-  /// Field di DB adalah 'foto_wajah' — disimpan sebagai full URL
   String? _pickFoto(Map<String, dynamic>? data) {
     if (data == null) return null;
     for (final k in [
-      'foto_wajah', // ← field utama di tabel absensi Laravel
+      'foto_wajah',
       'foto_wajah_url',
       'foto_url',
       'foto',
@@ -952,10 +958,8 @@ class _AbsenPageState extends State<AbsenPage> {
     return null;
   }
 
-  /// Format tanggal untuk display di riwayat: "Fri, 20 Mar 2026"
   String _formatTanggalDisplay(String raw) {
     try {
-      // Jika sudah berformat dd-MM-yyyy dari FormatterUtil
       if (RegExp(r'^\d{2}-\d{2}-\d{4}$').hasMatch(raw)) {
         final parts = raw.split('-');
         const monthNames = [
@@ -980,9 +984,7 @@ class _AbsenPageState extends State<AbsenPage> {
         );
         return '${dayNames[dt.weekday - 1]}, ${dt.day} ${monthNames[dt.month - 1]} ${dt.year}';
       }
-      // Coba parse ISO date
       final dt = DateTime.parse(raw);
-      // Konversi ke WIB
       final wib = dt.toUtc().add(const Duration(hours: 7));
       const monthNames = [
         'Jan',

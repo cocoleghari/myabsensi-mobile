@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:myabsensi_mobile/pages/admin/profil_admin_page.dart';
 import 'package:myabsensi_mobile/pages/splash_pages.dart';
+import 'package:myabsensi_mobile/pages/user/absenPage/employee_profile_page.dart';
 import 'package:myabsensi_mobile/pages/user/riwayatAbsensiPage/riwayat_absensi_page.dart';
 import 'package:myabsensi_mobile/pages/user/userPage/user_page.dart';
 import 'package:get/get.dart';
@@ -14,9 +15,11 @@ import 'pages/auth/login_page.dart';
 import 'pages/admin/listAkun/list_akun.dart';
 import 'pages/admin/lokasiPage/lokasi_page.dart';
 import 'pages/admin/pusatLokasi/pusat_lokasi_page.dart';
+import 'package:intl/date_symbol_data_local.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await initializeDateFormatting('id_ID', null);
   await GetStorage.init();
   runApp(const MyApp());
 }
@@ -53,6 +56,10 @@ class MyApp extends StatelessWidget {
           binding: UserLokasiBinding(),
         ),
         GetPage(name: '/user/riwayat', page: () => const RiwayatAbsensiPage()),
+        GetPage(
+          name: '/employee/profile',
+          page: () => const EmployeeProfilePage(),
+        ),
       ],
     );
   }

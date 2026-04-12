@@ -9,48 +9,75 @@ class RiwayatEmptyWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 40),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              width: 120,
-              height: 120,
+              width: 96,
+              height: 96,
               decoration: BoxDecoration(
-                color: Colors.blue.shade50,
-                shape: BoxShape.circle,
+                color: const Color(0xFF1976D2).withOpacity(0.08),
+                borderRadius: BorderRadius.circular(24),
               ),
-              child: Icon(Icons.history, size: 60, color: Colors.blue.shade300),
+              child: const Icon(
+                Icons.history_rounded,
+                size: 44,
+                color: Color(0xFF1976D2),
+              ),
             ),
             const SizedBox(height: 24),
-            Text(
-              'Belum Ada Riwayat Absensi',
+            const Text(
+              'Belum Ada Riwayat',
               style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: Colors.grey.shade800,
+                fontSize: 17,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF1A1F36),
               ),
             ),
             const SizedBox(height: 8),
-            Text(
-              'Anda belum melakukan absensi.\nSilahkan absen terlebih dahulu.',
+            const Text(
+              'Anda belum melakukan absensi.\nSilakan absen terlebih dahulu.',
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+              style: TextStyle(
+                fontSize: 13,
+                color: Color(0xFF8A94A6),
+                height: 1.5,
+              ),
             ),
-            const SizedBox(height: 24),
-            ElevatedButton.icon(
-              onPressed: onRefresh,
-              icon: const Icon(Icons.refresh),
-              label: const Text('Refresh'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.blue,
-                foregroundColor: Colors.white,
+            const SizedBox(height: 28),
+            GestureDetector(
+              onTap: onRefresh,
+              child: Container(
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 30,
-                  vertical: 12,
+                  horizontal: 28,
+                  vertical: 14,
                 ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1565C0),
+                  borderRadius: BorderRadius.circular(14),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF1565C0).withOpacity(0.3),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.refresh_rounded, color: Colors.white, size: 18),
+                    SizedBox(width: 8),
+                    Text(
+                      'Refresh',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),

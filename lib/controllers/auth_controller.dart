@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:http/http.dart' as http;
 import 'app_config.dart';
+import 'dart:io';
 
 class AuthController extends GetxController {
   static AuthController instance = Get.find();
@@ -21,6 +22,30 @@ class AuthController extends GetxController {
     super.onInit();
     _initBaseUrl();
     _loadStoredData();
+    // Refresh profile jika sudah login
+    if (token.isNotEmpty) {
+      fetchProfile(); // ← tambahkan ini
+    }
+  }
+
+  Future<void> fetchProfile() async {
+    try {
+      final baseUrl = await _resolvedBaseUrl;
+      final response = await http.get(
+        Uri.parse('$baseUrl/user/profil'), // atau endpoint profile Anda
+        headers: {
+          'Authorization': 'Bearer ${token.value}',
+          'Accept': 'application/json',
+        },
+      );
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        user.value = data['data']; // sesuai response ProfileController
+        await box.write('user', user.value);
+      }
+    } catch (e) {
+      print('fetchProfile error: $e');
+    }
   }
 
   Future<void> _initBaseUrl() async {
@@ -387,6 +412,112 @@ class AuthController extends GetxController {
     await box.erase();
     token.value = '';
     user.value = {};
+  }
+
+  // ─── METHOD BARU: Upload Foto ─────────────────────────────────────────────
+
+  Future<void> uploadPhoto(File imageFile) async {
+    isLoading.value = true;
+    try {
+      final baseUrl = await _resolvedBaseUrl;
+
+      // Gunakan multipart request karena kirim file
+      final request = http.MultipartRequest(
+        'POST',
+        Uri.parse('$baseUrl/user/upload-foto'),
+      );
+
+      request.headers.addAll({
+        'Authorization': 'Bearer ${token.value}',
+        'Accept': 'application/json',
+      });
+
+      request.files.add(
+        await http.MultipartFile.fromPath(
+          'photo', // sesuaikan dengan field name di backend
+          imageFile.path,
+          filename: 'photo_${DateTime.now().millisecondsSinceEpoch}.jpg',
+        ),
+      );
+
+      final streamed = await request.send().timeout(
+        const Duration(seconds: 30),
+      );
+      final response = await http.Response.fromStream(streamed);
+      final data = jsonDecode(response.body);
+
+      if (response.statusCode == 200) {
+        // Update user map dengan photo_url baru dari response
+        final updatedUser = Map<String, dynamic>.from(user.value);
+        updatedUser['photo_url'] =
+            data['photo_url'] ?? data['data']?['photo_url'];
+        user.value = updatedUser;
+        await box.write('user', user.value);
+
+        Get.snackbar(
+          'Berhasil',
+          'Foto profil berhasil diperbarui',
+          backgroundColor: Colors.green,
+          colorText: Colors.white,
+          snackPosition: SnackPosition.TOP,
+        );
+      } else {
+        Get.snackbar(
+          'Gagal',
+          data['message'] ?? 'Gagal mengupload foto',
+          backgroundColor: Colors.red,
+          colorText: Colors.white,
+          snackPosition: SnackPosition.TOP,
+        );
+      }
+    } catch (e) {
+      print('uploadPhoto error: $e');
+      Get.snackbar(
+        'Error',
+        'Koneksi error: ${e.toString()}',
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+        snackPosition: SnackPosition.TOP,
+      );
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  Future<void> deletePhoto() async {
+    isLoading.value = true;
+    try {
+      final baseUrl = await _resolvedBaseUrl;
+
+      final response = await http
+          .delete(
+            Uri.parse('$baseUrl/user/hapus-foto'),
+            headers: {
+              'Authorization': 'Bearer ${token.value}',
+              'Accept': 'application/json',
+            },
+          )
+          .timeout(const Duration(seconds: 30));
+
+      if (response.statusCode == 200) {
+        final updatedUser = Map<String, dynamic>.from(user.value);
+        updatedUser.remove('photo_url');
+        user.value = updatedUser;
+        await box.write('user', user.value);
+
+        Get.snackbar(
+          'Berhasil',
+          'Foto profil berhasil dihapus',
+          backgroundColor: Colors.green,
+          colorText: Colors.white,
+          snackPosition: SnackPosition.TOP,
+        );
+      }
+    } catch (e) {
+      print('deletePhoto error: $e');
+    } finally {
+      isLoading.value = false;
+    }
   }
 
   bool get isLoggedIn => token.isNotEmpty;

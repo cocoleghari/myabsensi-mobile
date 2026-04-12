@@ -498,13 +498,13 @@ class _PreviewAbsensiPageState extends State<PreviewAbsensiPage> {
                   await _simpanAbsensi();
                 },
           style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.orange,
+            backgroundColor: const Color(0xFF1976D2),
             foregroundColor: Colors.white,
             padding: const EdgeInsets.symmetric(vertical: 16),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
             ),
-            disabledBackgroundColor: Colors.orange.withOpacity(0.6),
+            disabledBackgroundColor: const Color(0xFF1976D2).withOpacity(0.6),
           ),
           child: isLoading
               ? const Row(
