@@ -23,6 +23,9 @@ class _CameraPageState extends State<CameraPage> with WidgetsBindingObserver {
   // Mode flash: off, auto, always on
   FlashMode _flashMode = FlashMode.off;
 
+  // Index kamera aktif
+  int _selectedCameraIndex = 0;
+
   @override
   void initState() {
     super.initState();
@@ -44,11 +47,11 @@ class _CameraPageState extends State<CameraPage> with WidgetsBindingObserver {
     if (state == AppLifecycleState.inactive) {
       controller.dispose();
     } else if (state == AppLifecycleState.resumed) {
-      _initCamera();
+      _initCamera(_selectedCameraIndex);
     }
   }
 
-  Future<void> _initCamera() async {
+  Future<void> _initCamera([int cameraIndex = -1]) async {
     try {
       _cameras = await availableCameras();
       if (_cameras.isEmpty) {
@@ -56,17 +59,26 @@ class _CameraPageState extends State<CameraPage> with WidgetsBindingObserver {
         return;
       }
 
-      CameraDescription? frontCamera;
-      for (final cam in _cameras) {
-        if (cam.lensDirection == CameraLensDirection.front) {
-          frontCamera = cam;
-          break;
+      // Pertama kali → cari kamera depan
+      if (cameraIndex == -1) {
+        int frontIndex = 0;
+        for (int i = 0; i < _cameras.length; i++) {
+          if (_cameras[i].lensDirection == CameraLensDirection.front) {
+            frontIndex = i;
+            break;
+          }
         }
+        _selectedCameraIndex = frontIndex;
+      } else {
+        _selectedCameraIndex = cameraIndex;
       }
-      final selectedCamera = frontCamera ?? _cameras.first;
+
+      // Dispose controller lama sebelum buat baru
+      await _controller?.dispose();
+      if (mounted) setState(() => _isInitialized = false);
 
       _controller = CameraController(
-        selectedCamera,
+        _cameras[_selectedCameraIndex],
         ResolutionPreset.high,
         enableAudio: false,
         imageFormatGroup: ImageFormatGroup.jpeg,
@@ -78,6 +90,12 @@ class _CameraPageState extends State<CameraPage> with WidgetsBindingObserver {
     } catch (e) {
       if (mounted) setState(() => _errorMessage = 'Gagal membuka kamera: $e');
     }
+  }
+
+  Future<void> _switchCamera() async {
+    if (_cameras.length < 2) return;
+    final nextIndex = (_selectedCameraIndex + 1) % _cameras.length;
+    await _initCamera(nextIndex);
   }
 
   Future<void> _takePicture() async {
@@ -153,6 +171,15 @@ class _CameraPageState extends State<CameraPage> with WidgetsBindingObserver {
       default:
         return 'Off';
     }
+  }
+
+  // Apakah kamera aktif adalah kamera depan
+  bool get _isFrontCamera {
+    if (_cameras.isEmpty || _selectedCameraIndex >= _cameras.length) {
+      return false;
+    }
+    return _cameras[_selectedCameraIndex].lensDirection ==
+        CameraLensDirection.front;
   }
 
   // User konfirmasi pakai foto ini
@@ -248,7 +275,7 @@ class _CameraPageState extends State<CameraPage> with WidgetsBindingObserver {
 
                   const SizedBox(width: 8),
 
-                  // ── Badge Kamera Depan ────────────────────────
+                  // ── Badge Kamera (dinamis) ────────────────────────
                   Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 12,
@@ -258,14 +285,21 @@ class _CameraPageState extends State<CameraPage> with WidgetsBindingObserver {
                       color: Colors.white12,
                       borderRadius: BorderRadius.circular(20),
                     ),
-                    child: const Row(
+                    child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.face, color: Colors.white, size: 14),
-                        SizedBox(width: 6),
+                        Icon(
+                          _isFrontCamera ? Icons.face : Icons.camera_rear,
+                          color: Colors.white,
+                          size: 14,
+                        ),
+                        const SizedBox(width: 6),
                         Text(
-                          'Kamera Depan',
-                          style: TextStyle(color: Colors.white, fontSize: 12),
+                          _isFrontCamera ? 'Kamera Depan' : 'Kamera Belakang',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                          ),
                         ),
                       ],
                     ),
@@ -281,11 +315,34 @@ class _CameraPageState extends State<CameraPage> with WidgetsBindingObserver {
               color: Colors.black,
               width: double.infinity,
               child: _isInitialized && _controller != null
-                  ? Center(
-                      child: AspectRatio(
-                        aspectRatio: 2 / 3,
-                        child: CameraPreview(_controller!),
-                      ),
+                  ? LayoutBuilder(
+                      builder: (context, constraints) {
+                        final rawRatio = _controller!.value.aspectRatio;
+                        // Normalisasi ke portrait: jika landscape (> 1), balik jadi 1/ratio
+                        final camRatio = rawRatio > 1
+                            ? 1 / rawRatio
+                            : rawRatio; // rasio asli sensor
+                        const targetRatio =
+                            2 / 3; // rasio frame yang diinginkan
+
+                        return Center(
+                          child: ClipRect(
+                            child: SizedBox(
+                              width: constraints.maxWidth,
+                              height: constraints.maxWidth / targetRatio,
+                              child: OverflowBox(
+                                maxWidth: double.infinity,
+                                maxHeight: double.infinity,
+                                child: SizedBox(
+                                  width: constraints.maxWidth,
+                                  height: constraints.maxWidth / camRatio,
+                                  child: CameraPreview(_controller!),
+                                ),
+                              ),
+                            ),
+                          ),
+                        );
+                      },
                     )
                   : _errorMessage != null
                   ? Center(
@@ -315,7 +372,7 @@ class _CameraPageState extends State<CameraPage> with WidgetsBindingObserver {
             ),
           ),
 
-          // Bottom bar — shutter
+          // Bottom bar — shutter + switch camera
           Container(
             color: Colors.black,
             padding: const EdgeInsets.symmetric(vertical: 24),
@@ -323,36 +380,74 @@ class _CameraPageState extends State<CameraPage> with WidgetsBindingObserver {
               top: false,
               child: Column(
                 children: [
-                  GestureDetector(
-                    onTap: _isTakingPicture ? null : _takePicture,
-                    child: Container(
-                      width: 68,
-                      height: 68,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: Colors.transparent,
-                        border: Border.all(color: Colors.white, width: 3),
-                      ),
-                      child: Center(
-                        child: _isTakingPicture
-                            ? const SizedBox(
-                                width: 28,
-                                height: 28,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: Colors.white,
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      // ── Tombol switch kamera (kiri) ──────────────
+                      SizedBox(
+                        width: 68,
+                        child: _cameras.length >= 2
+                            ? Center(
+                                child: GestureDetector(
+                                  onTap: _isInitialized ? _switchCamera : null,
+                                  child: Container(
+                                    width: 44,
+                                    height: 44,
+                                    decoration: const BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: Colors.white12,
+                                    ),
+                                    child: const Icon(
+                                      Icons.flip_camera_ios,
+                                      color: Colors.white,
+                                      size: 22,
+                                    ),
+                                  ),
                                 ),
                               )
-                            : Container(
-                                width: 54,
-                                height: 54,
-                                decoration: const BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: Colors.white,
-                                ),
-                              ),
+                            : const SizedBox(),
                       ),
-                    ),
+
+                      const SizedBox(width: 24),
+
+                      // ── Tombol shutter (tengah) ───────────────────
+                      GestureDetector(
+                        onTap: _isTakingPicture ? null : _takePicture,
+                        child: Container(
+                          width: 68,
+                          height: 68,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Colors.transparent,
+                            border: Border.all(color: Colors.white, width: 3),
+                          ),
+                          child: Center(
+                            child: _isTakingPicture
+                                ? const SizedBox(
+                                    width: 28,
+                                    height: 28,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Colors.white,
+                                    ),
+                                  )
+                                : Container(
+                                    width: 54,
+                                    height: 54,
+                                    decoration: const BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(width: 24),
+
+                      // ── Placeholder kanan (biar shutter tetap tengah) ──
+                      const SizedBox(width: 68),
+                    ],
                   ),
                   const SizedBox(height: 10),
                   const Text(
@@ -411,15 +506,22 @@ class _CameraPageState extends State<CameraPage> with WidgetsBindingObserver {
             child: Container(
               color: Colors.black,
               width: double.infinity,
-              child: Center(
-                child: AspectRatio(
-                  aspectRatio: 2 / 3,
-                  child: Transform(
-                    alignment: Alignment.center,
-                    transform: Matrix4.rotationY(3.14159265),
-                    child: Image.file(_capturedPhoto!, fit: BoxFit.cover),
-                  ),
-                ),
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  return Center(
+                    child: ClipRect(
+                      child: SizedBox(
+                        width: constraints.maxWidth,
+                        height: constraints.maxWidth / (2 / 3),
+                        child: Transform(
+                          alignment: Alignment.center,
+                          transform: Matrix4.rotationY(3.14159265),
+                          child: Image.file(_capturedPhoto!, fit: BoxFit.cover),
+                        ),
+                      ),
+                    ),
+                  );
+                },
               ),
             ),
           ),

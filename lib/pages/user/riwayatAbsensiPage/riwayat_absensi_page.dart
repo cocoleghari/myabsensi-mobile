@@ -269,7 +269,6 @@ class _RiwayatAbsensiPageState extends State<RiwayatAbsensiPage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _sectionLabel('Daftar Absensi'),
-        const SizedBox(height: 10),
         ListView.builder(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),

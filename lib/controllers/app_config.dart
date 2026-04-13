@@ -2,7 +2,7 @@ import 'dart:io';
 import 'package:device_info_plus/device_info_plus.dart';
 
 class AppConfig {
-  static const String _localIp = '192.168.100.104';
+  static const String _localIp = '192.168.0.100';
   static const String _port = '8000';
   static const String _apiPath = '/api';
 

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:myabsensi_mobile/pages/user/modals/ganti_password_modal.dart';
+import 'package:myabsensi_mobile/pages/user/profilPage/modals/ganti_password_modal.dart';
 import 'package:get/get.dart';
 import '../../controllers/auth_controller.dart';
 import 'master_drawer.dart';

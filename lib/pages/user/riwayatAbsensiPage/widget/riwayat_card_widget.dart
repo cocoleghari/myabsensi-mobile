@@ -22,10 +22,10 @@ class RiwayatCardWidget extends StatelessWidget {
     final bool hasMasukOnly = dataMasuk != null && dataPulang == null;
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: const EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(10),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.06),
@@ -36,7 +36,7 @@ class RiwayatCardWidget extends StatelessWidget {
       ),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(10),
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Row(
@@ -66,7 +66,7 @@ class RiwayatCardWidget extends StatelessWidget {
       height: 42,
       decoration: BoxDecoration(
         color: const Color(0xFF1976D2).withOpacity(0.09),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(10),
       ),
       child: Center(
         child: Text(

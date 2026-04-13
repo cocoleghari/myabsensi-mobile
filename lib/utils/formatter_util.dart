@@ -89,11 +89,11 @@ class FormatterUtil {
   static String getWajahImageUrl(String path) {
     if (path.isEmpty) return '';
 
-    const String baseUrl = 'http://192.168.100.104:8000';
+    const String baseUrl = 'http://192.168.0.100:8000';
 
     if (path.startsWith('http')) {
       if (path.contains('localhost')) {
-        return path.replaceFirst('localhost', '192.168.100.104:8000');
+        return path.replaceFirst('localhost', '192.168.0.100:8000');
       }
       return path;
     }
@@ -110,7 +110,7 @@ class FormatterUtil {
     if (path.isEmpty) return '';
 
     // Default base URL
-    const String defaultBaseUrl = 'http://192.168.100.104:8000';
+    const String defaultBaseUrl = 'http://192.168.0.100:8000';
     final String finalBaseUrl = baseUrl ?? defaultBaseUrl;
 
     // Hapus '/api' jika ada
