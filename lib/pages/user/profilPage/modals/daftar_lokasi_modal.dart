@@ -11,9 +11,7 @@ class DaftarLokasiModal {
     final selectedLokasi = Rxn<Map<String, dynamic>>();
 
     void log(String message) {
-      if (kDebugMode) {
-        debugPrint('📍 [DaftarLokasiModal] $message');
-      }
+      if (kDebugMode) debugPrint('📍 [DaftarLokasiModal] $message');
     }
 
     showModalBottomSheet(
@@ -136,28 +134,30 @@ class DaftarLokasiModal {
                               controller.lokasiTerpilih.value?['id'];
                           final jarak = controller.jarakTerdekat.value;
 
+                          // ── FIX: field sesuai response /user/lokasi ──
+                          // Backend mengirim: nama_lokasi, titik_kordinat, latitude, longitude
+                          final namaLokasi =
+                              lokasi['nama_lokasi']?.toString() ?? '-';
+                          final titikKordinat =
+                              lokasi['titik_kordinat']?.toString() ?? '';
+                          // latitude & longitude sudah diparsing backend sebagai double
+                          final lat = (lokasi['latitude'] as num?)?.toDouble();
+                          final lng = (lokasi['longitude'] as num?)?.toDouble();
+                          final radiusMeter =
+                              (lokasi['radius_meter'] as num?)?.toInt() ?? 100;
+
                           return GestureDetector(
                             onTap: () {
                               selectedLokasi.value = lokasi;
-                              try {
-                                final parts = lokasi['koordinat'].split(',');
-                                if (parts.length == 2) {
-                                  final lat = double.tryParse(parts[0].trim());
-                                  final lng = double.tryParse(parts[1].trim());
-                                  if (lat != null && lng != null) {
-                                    selectedLocation.value = LatLng(lat, lng);
-                                    if (mapController != null) {
-                                      mapController!.animateCamera(
-                                        CameraUpdate.newLatLngZoom(
-                                          selectedLocation.value!,
-                                          16,
-                                        ),
-                                      );
-                                    }
-                                  }
-                                }
-                              } catch (e) {
-                                log('Error parsing koordinat: $e');
+                              // Gunakan latitude & longitude langsung (sudah double)
+                              if (lat != null && lng != null) {
+                                selectedLocation.value = LatLng(lat, lng);
+                                mapController?.animateCamera(
+                                  CameraUpdate.newLatLngZoom(
+                                    selectedLocation.value!,
+                                    16,
+                                  ),
+                                );
                               }
                             },
                             child: Container(
@@ -198,11 +198,12 @@ class DaftarLokasiModal {
                                       crossAxisAlignment:
                                           CrossAxisAlignment.start,
                                       children: [
+                                        // ── Baris nama + badge terdekat ──
                                         Row(
                                           children: [
                                             Expanded(
                                               child: Text(
-                                                lokasi['lokasi'],
+                                                namaLokasi, // ← FIX
                                                 style: TextStyle(
                                                   fontSize: 14,
                                                   fontWeight: FontWeight.w600,
@@ -240,8 +241,12 @@ class DaftarLokasiModal {
                                           ],
                                         ),
                                         const SizedBox(height: 4),
+                                        // ── Koordinat & radius ──
                                         Text(
-                                          lokasi['koordinat'],
+                                          titikKordinat
+                                                  .isNotEmpty // ← FIX
+                                              ? '$titikKordinat  •  radius ${radiusMeter}m'
+                                              : 'radius ${radiusMeter}m',
                                           style: TextStyle(
                                             fontSize: 10,
                                             color: Colors.grey[600],
@@ -249,6 +254,7 @@ class DaftarLokasiModal {
                                           maxLines: 1,
                                           overflow: TextOverflow.ellipsis,
                                         ),
+                                        // ── Badge dalam/luar radius jika ini terdekat ──
                                         if (isTerdekat) ...[
                                           const SizedBox(height: 4),
                                           Container(
@@ -299,7 +305,7 @@ class DaftarLokasiModal {
                                     ),
                                   ),
                                   if (isSelected)
-                                    Icon(
+                                    const Icon(
                                       Icons.check_circle,
                                       color: Colors.blue,
                                       size: 20,
@@ -312,6 +318,7 @@ class DaftarLokasiModal {
                       ),
                     ),
 
+                    // ── Peta mini jika lokasi sudah dipilih ──
                     if (selectedLocation.value != null)
                       Container(
                         height: 200,
@@ -328,17 +335,18 @@ class DaftarLokasiModal {
                                   target: selectedLocation.value!,
                                   zoom: 16,
                                 ),
-                                onMapCreated: (controller) {
-                                  mapController = controller;
-                                },
+                                onMapCreated: (c) => mapController = c,
                                 markers: {
                                   Marker(
                                     markerId: MarkerId(
-                                      'selected_location_${DateTime.now().millisecondsSinceEpoch}',
+                                      'sel_${DateTime.now().millisecondsSinceEpoch}',
                                     ),
                                     position: selectedLocation.value!,
                                     infoWindow: InfoWindow(
-                                      title: selectedLokasi.value?['lokasi'],
+                                      title:
+                                          selectedLokasi.value?['nama_lokasi']
+                                              ?.toString() ??
+                                          '-', // ← FIX
                                     ),
                                   ),
                                 },
@@ -364,14 +372,16 @@ class DaftarLokasiModal {
                                   child: Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
-                                      Icon(
+                                      const Icon(
                                         Icons.location_on,
                                         size: 14,
                                         color: Colors.red,
                                       ),
                                       const SizedBox(width: 4),
                                       Text(
-                                        selectedLokasi.value?['lokasi'] ?? '',
+                                        selectedLokasi.value?['nama_lokasi']
+                                                ?.toString() ??
+                                            '-', // ← FIX
                                         style: const TextStyle(
                                           fontSize: 12,
                                           fontWeight: FontWeight.w500,

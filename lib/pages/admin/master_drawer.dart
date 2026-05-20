@@ -22,13 +22,9 @@ class MasterDrawer extends StatelessWidget {
 
             const SizedBox(height: 8),
 
-            // _buildMenuItem(
-            //   icon: Icons.person,
-            //   title: 'Profil Admin',
-            //   routeName: '/admin/profil',
-            //   pageName: 'profil-admin',
-            //   iconColor: Colors.teal,
-            // ),
+            // ── SHIFT SECTION ─────────────────────────────────────────────
+            _buildSectionDivider('Pengaturan Akun'),
+
             _buildMenuItem(
               icon: Icons.people,
               title: 'List Akun',
@@ -53,6 +49,104 @@ class MasterDrawer extends StatelessWidget {
               iconColor: Colors.purple,
             ),
 
+            // ── SHIFT SECTION ─────────────────────────────────────────────
+            _buildSectionDivider('Pengaturan Karyawan'),
+
+            _buildMenuItem(
+              icon: Icons.account_tree,
+              title: 'Department',
+              routeName: '/admin/department',
+              pageName: 'department',
+              iconColor: Colors.deepPurple,
+            ),
+
+            _buildMenuItem(
+              icon: Icons.badge,
+              title: 'Karyawan',
+              routeName: '/admin/employees',
+              pageName: 'employee',
+              iconColor: Colors.indigo,
+            ),
+
+            _buildMenuItem(
+              icon: Icons.work_outline,
+              title: 'Posisi / Jabatan',
+              routeName: '/admin/positions',
+              pageName: 'positions',
+              iconColor: Colors.indigo,
+            ),
+
+            _buildMenuItem(
+              icon: Icons.grade,
+              title: 'Job Grade',
+              routeName: '/admin/job-grades',
+              pageName: 'job-grades',
+              iconColor: Colors.amber,
+            ),
+
+            _buildMenuItem(
+              icon: Icons.layers,
+              title: 'Job Level',
+              routeName: '/admin/job-levels',
+              pageName: 'job-levels',
+              iconColor: Colors.teal,
+            ),
+
+            _buildMenuItem(
+              icon: Icons.label_outline,
+              title: 'Status Karyawan',
+              routeName: '/admin/employee-statuses',
+              pageName: 'employee-statuses',
+              iconColor: Colors.deepOrange,
+            ),
+
+            // ── SHIFT SECTION ─────────────────────────────────────────────
+            _buildSectionDivider('Pengaturan Shift'),
+
+            _buildMenuItem(
+              icon: Icons.schedule,
+              title: 'Master Shift',
+              routeName: '/admin/shifts',
+              pageName: 'shifts',
+              iconColor: const Color(0xFF0288D1),
+            ),
+
+            _buildMenuItem(
+              icon: Icons.calendar_view_week,
+              title: 'Pola Shift Mingguan',
+              routeName: '/admin/shift-patterns',
+              pageName: 'shift-patterns',
+              iconColor: const Color(0xFF00897B),
+            ),
+
+            _buildMenuItem(
+              icon: Icons.people_alt_outlined,
+              title: 'Assign Shift Karyawan',
+              routeName: '/admin/employee-shifts',
+              pageName: 'employee-shifts',
+              iconColor: const Color(0xFF5E35B1),
+            ),
+
+            // ── LAPORAN SECTION ─────────────────────────────────────────────
+            _buildSectionDivider('Laporan'),
+
+            _buildMenuItem(
+              icon: Icons.bar_chart_rounded,
+              title: 'Laporan Absensi',
+              routeName: '/admin/laporan-absensi',
+              pageName: 'laporan-absensi',
+              iconColor: Colors.green,
+            ),
+
+            _buildMenuItem(
+              icon: Icons.assignment_rounded,
+              title: 'Laporan Aktivitas',
+              routeName: '/admin/laporan-aktivitas',
+              pageName: 'laporan-aktivitas',
+              iconColor: Colors.teal,
+            ),
+
+            // ─────────────────────────────────────────────────────────────
             _buildRiwayatMenuItem(),
 
             const Divider(height: 32, thickness: 1),
@@ -63,6 +157,22 @@ class MasterDrawer extends StatelessWidget {
 
             _buildVersionInfo(),
           ],
+        ),
+      ),
+    );
+  }
+
+  /// Label pemisah section (tidak bisa diklik)
+  Widget _buildSectionDivider(String label) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 16, 16, 4),
+      child: Text(
+        label.toUpperCase(),
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+          color: Colors.grey.shade400,
+          letterSpacing: 1.2,
         ),
       ),
     );
@@ -108,7 +218,6 @@ class MasterDrawer extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 12),
-
           Obx(
             () => Text(
               authController.userName,
@@ -120,7 +229,6 @@ class MasterDrawer extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 4),
-
           Obx(
             () => Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
@@ -338,7 +446,7 @@ class MasterDrawer extends StatelessWidget {
           ),
           ElevatedButton(
             onPressed: () {
-              Get.back(); //
+              Get.back();
               authController.logout();
             },
             style: ElevatedButton.styleFrom(

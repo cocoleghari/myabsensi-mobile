@@ -303,6 +303,8 @@ class _RekamAktivitasDetailPageState extends State<RekamAktivitasDetailPage> {
   }
 
   // ── DETAIL CARD ───────────────────────────────────────────────────────
+  // Ganti seluruh _buildDetailCard() dan semua helper lama dengan ini:
+
   Widget _buildDetailCard() {
     final mulai = widget.activity['mulai'] ?? '';
     final berakhir = widget.activity['berakhir'] ?? '';
@@ -314,187 +316,530 @@ class _RekamAktivitasDetailPageState extends State<RekamAktivitasDetailPage> {
     final tujuan = (widget.activity['tujuan'] ?? '').toString();
     final kendaraanNopol = (widget.activity['kendaraan_nopol'] ?? '')
         .toString();
+    final lat = widget.activity['latitude']?.toString() ?? '-';
+    final lng = widget.activity['longitude']?.toString() ?? '-';
+    final akurasi = widget.activity['akurasi_meter']?.toString() ?? '-';
 
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.grey.shade100),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
+    String durasi = '-';
+    try {
+      final dtMulai = DateTime.parse(mulai);
+      final dtBerakhir = DateTime.parse(berakhir);
+      final diff = dtBerakhir.difference(dtMulai);
+      final jam = diff.inHours;
+      final menit = diff.inMinutes % 60;
+      durasi = jam > 0 ? '${jam}j ${menit}m' : '${menit} menit';
+    } catch (_) {}
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ── Foto ─────────────────────────────────────────
+          // ── Foto ──────────────────────────────────────────────
           if (_fotos.isNotEmpty) ...[
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildSectionLabel('Foto'),
-                  const SizedBox(height: 10),
-                  _buildFotoSection(),
-                ],
-              ),
-            ),
-            _buildDivider(),
+            _buildFotoSection(),
+            const SizedBox(height: 16),
           ],
 
-          // ── Waktu Pencapaian ──────────────────────────────
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+          // ── Satu card gabungan ─────────────────────────────────
+          Container(
+            width: double.infinity,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 12,
+                  offset: const Offset(0, 3),
+                ),
+              ],
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildSectionLabel('Waktu & Tanggal Pencapaian'),
-                const SizedBox(height: 6),
-                _buildValue(FormatterUtil.formatWaktuLengkap(mulai)),
-              ],
-            ),
-          ),
-          _buildDivider(),
-
-          // ── Tugas ─────────────────────────────────────────
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildSectionLabel('Tugas'),
-                const SizedBox(height: 6),
-                _buildValue(widget.activity['tugas'] ?? '-'),
-              ],
-            ),
-          ),
-          _buildDivider(),
-
-          // ── Mulai & Berakhir ──────────────────────────────
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                // ── Waktu ──────────────────────────────────────
+                Padding(
+                  padding: const EdgeInsets.all(18),
+                  child: Row(
                     children: [
-                      _buildSectionLabel('Mulai'),
-                      const SizedBox(height: 6),
-                      _buildValue(FormatterUtil.formatWaktuLengkap(mulai)),
+                      Expanded(
+                        child: _buildTimeColumn(
+                          label: 'Mulai',
+                          time: FormatterUtil.formatWaktuSimple(mulai),
+                          date: FormatterUtil.formatTanggal(mulai),
+                          color: const Color(0xFF1565C0),
+                          bgColor: const Color(0xFFE8F0FE),
+                        ),
+                      ),
+                      Column(
+                        children: [
+                          Container(
+                            width: 36,
+                            height: 36,
+                            decoration: const BoxDecoration(
+                              color: Color(0xFFF2F4F7),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.arrow_forward_rounded,
+                              size: 16,
+                              color: Color(0xFF8A94A6),
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 3,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF1565C0).withOpacity(0.08),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Text(
+                              durasi,
+                              style: const TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFF1565C0),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      Expanded(
+                        child: _buildTimeColumn(
+                          label: 'Selesai',
+                          time: FormatterUtil.formatWaktuSimple(berakhir),
+                          date: FormatterUtil.formatTanggal(berakhir),
+                          color: const Color(0xFF2E7D32),
+                          bgColor: const Color(0xFFE8F5E9),
+                          alignRight: true,
+                        ),
+                      ),
                     ],
                   ),
                 ),
-                Expanded(
+                _buildDividerLine(),
+
+                // ── Tipe & Tugas ───────────────────────────────
+                Padding(
+                  padding: const EdgeInsets.all(18),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _buildSectionLabel('Berakhir'),
-                      const SizedBox(height: 6),
-                      _buildValue(FormatterUtil.formatWaktuLengkap(berakhir)),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 5,
+                        ),
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFF1565C0), Color(0xFF1E88E5)],
+                          ),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.label_rounded,
+                              size: 11,
+                              color: Colors.white,
+                            ),
+                            const SizedBox(width: 5),
+                            Text(
+                              tipeNama,
+                              style: const TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Text(
+                        widget.activity['tugas'] ?? '-',
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF1A1F36),
+                          height: 1.5,
+                        ),
+                      ),
                     ],
                   ),
                 ),
-              ],
-            ),
-          ),
-          _buildDivider(),
 
-          // ── Lokasi ────────────────────────────────────────
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildSectionLabel('Lokasi'),
-                const SizedBox(height: 6),
-                _buildValue(
-                  '${widget.activity['latitude'] ?? '-'}, '
-                  '${widget.activity['longitude'] ?? '-'}',
-                ),
-              ],
-            ),
-          ),
-          _buildDivider(),
-
-          // ── Tipe Aktivitas ────────────────────────────────
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildSectionLabel('Tipe Aktivitas'),
-                const SizedBox(height: 6),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFE3EDF8),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    tipeNama,
-                    style: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      color: _gradientStart,
+                // ── Tujuan (opsional) ──────────────────────────
+                if (tujuan.isNotEmpty) ...[
+                  _buildDividerLine(),
+                  Padding(
+                    padding: const EdgeInsets.all(18),
+                    child: _buildInfoRow(
+                      icon: Icons.flag_rounded,
+                      iconColor: const Color(0xFFE65100),
+                      label: 'Tujuan',
+                      value: tujuan,
                     ),
                   ),
+                ],
+
+                // ── Kendaraan (opsional) ───────────────────────
+                if (kendaraanNopol.isNotEmpty) ...[
+                  _buildDividerLine(),
+                  Padding(
+                    padding: const EdgeInsets.all(18),
+                    child: _buildInfoRow(
+                      icon: Icons.directions_car_rounded,
+                      iconColor: const Color(0xFF1565C0),
+                      label: 'Kendaraan & Nopol',
+                      value: null,
+                      trailing: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF2F4F7),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.grey.shade200),
+                        ),
+                        child: Text(
+                          kendaraanNopol.toUpperCase(),
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xFF1A1F36),
+                            letterSpacing: 2,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+
+                // ── Koordinat ──────────────────────────────────
+                _buildDividerLine(),
+                Padding(
+                  padding: const EdgeInsets.all(18),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            width: 28,
+                            height: 28,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFE53935).withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(7),
+                            ),
+                            child: const Icon(
+                              Icons.location_on_rounded,
+                              size: 14,
+                              color: Color(0xFFE53935),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          const Text(
+                            'KOORDINAT LOKASI',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF8A94A6),
+                              letterSpacing: 0.8,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _buildCoordCard(
+                              label: 'Latitude',
+                              value: lat,
+                              icon: Icons.north_rounded,
+                              color: const Color(0xFF1565C0),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: _buildCoordCard(
+                              label: 'Longitude',
+                              value: lng,
+                              icon: Icons.east_rounded,
+                              color: const Color(0xFF7B2FBE),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 10,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFFF3E0),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: const Color(0xFFE65100).withOpacity(0.2),
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(
+                              Icons.radar_rounded,
+                              size: 15,
+                              color: Color(0xFFE65100),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Akurasi GPS',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey[600],
+                              ),
+                            ),
+                            const Spacer(),
+                            Text(
+                              '± $akurasi meter',
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFFE65100),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
           ),
-
-          // ── Tujuan ────────────────────────────────────────
-          if (tujuan.isNotEmpty) ...[
-            _buildDivider(),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildSectionLabel('Tujuan'),
-                  const SizedBox(height: 6),
-                  _buildValue(tujuan),
-                ],
-              ),
-            ),
-          ],
-
-          // ── Kendaraan & Nopol ─────────────────────────────
-          if (kendaraanNopol.isNotEmpty) ...[
-            _buildDivider(),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildSectionLabel('Kendaraan & Nopol'),
-                  const SizedBox(height: 6),
-                  _buildValue(kendaraanNopol),
-                ],
-              ),
-            ),
-          ],
-
-          const SizedBox(height: 20),
+          const SizedBox(height: 32),
         ],
       ),
     );
   }
 
-  Widget _buildDivider() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-      child: Divider(color: Colors.grey.shade100, height: 1),
+  // Tambahkan helper divider ini
+  Widget _buildDividerLine() {
+    return Divider(height: 1, thickness: 1, color: Colors.grey.shade100);
+  }
+
+  // ── CARD WRAPPER ──────────────────────────────────────────────────────
+  Widget _buildCard({required Widget child}) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 12,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: child,
+    );
+  }
+
+  // ── CARD HEADER ───────────────────────────────────────────────────────
+  Widget _buildCardHeader({
+    required IconData icon,
+    required Color iconColor,
+    required String label,
+  }) {
+    return Row(
+      children: [
+        Container(
+          width: 30,
+          height: 30,
+          decoration: BoxDecoration(
+            color: iconColor.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(icon, color: iconColor, size: 15),
+        ),
+        const SizedBox(width: 10),
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w700,
+            color: Color(0xFF8A94A6),
+            letterSpacing: 0.8,
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ── TIME COLUMN ───────────────────────────────────────────────────────
+  Widget _buildTimeColumn({
+    required String label,
+    required String time,
+    required String date,
+    required Color color,
+    required Color bgColor,
+    bool alignRight = false,
+  }) {
+    return Column(
+      crossAxisAlignment: alignRight
+          ? CrossAxisAlignment.end
+          : CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 11,
+            color: Color(0xFF8A94A6),
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        const SizedBox(height: 6),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            color: bgColor,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Column(
+            crossAxisAlignment: alignRight
+                ? CrossAxisAlignment.end
+                : CrossAxisAlignment.start,
+            children: [
+              Text(
+                time,
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.w800,
+                  color: color,
+                  height: 1,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                date,
+                style: TextStyle(
+                  fontSize: 10,
+                  color: color.withOpacity(0.7),
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ── INFO ROW ──────────────────────────────────────────────────────────
+  Widget _buildInfoRow({
+    required IconData icon,
+    required Color iconColor,
+    required String label,
+    required String? value,
+    Widget? trailing,
+  }) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: 32,
+          height: 32,
+          decoration: BoxDecoration(
+            color: iconColor.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(icon, color: iconColor, size: 15),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 11,
+                  color: Color(0xFF8A94A6),
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(height: 4),
+              if (value != null)
+                Text(
+                  value,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF1A1F36),
+                    height: 1.4,
+                  ),
+                ),
+              if (trailing != null) trailing,
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ── COORD CARD ────────────────────────────────────────────────────────
+  Widget _buildCoordCard({
+    required String label,
+    required String value,
+    required IconData icon,
+    required Color color,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withOpacity(0.15)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 12, color: color),
+              const SizedBox(width: 4),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 10,
+                  color: color.withOpacity(0.8),
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: color,
+            ),
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
     );
   }
 
@@ -644,30 +989,6 @@ class _RekamAktivitasDetailPageState extends State<RekamAktivitasDetailPage> {
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  // ── HELPER ────────────────────────────────────────────────────────────
-  Widget _buildSectionLabel(String label) {
-    return Text(
-      label,
-      style: TextStyle(
-        fontSize: 12,
-        color: Colors.grey[500],
-        fontWeight: FontWeight.w600,
-        letterSpacing: 0.4,
-      ),
-    );
-  }
-
-  Widget _buildValue(String value) {
-    return Text(
-      value,
-      style: const TextStyle(
-        fontSize: 15,
-        color: Colors.black87,
-        fontWeight: FontWeight.w700,
       ),
     );
   }

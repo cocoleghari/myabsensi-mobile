@@ -26,7 +26,7 @@ class AdminFilterWidget extends StatelessWidget {
           const SizedBox(height: 12),
 
           Obx(() {
-            if (controller.semuaUsers.isEmpty) {
+            if (controller.semuaEmployees.isEmpty) {
               return const Center(child: Text('Tidak ada data user'));
             }
 
@@ -45,16 +45,16 @@ class AdminFilterWidget extends StatelessWidget {
                       ),
                       prefixIcon: const Icon(Icons.person, size: 18),
                     ),
-                    value: controller.selectedUserId.value.isEmpty
+                    value: controller.selectedEmployeeId.value.isEmpty
                         ? null
-                        : controller.selectedUserId.value,
+                        : controller.selectedEmployeeId.value,
                     hint: const Text('Semua User'),
                     items: [
                       const DropdownMenuItem<String>(
                         value: '',
                         child: Text('Semua User'),
                       ),
-                      ...controller.semuaUsers.map((user) {
+                      ...controller.semuaEmployees.map((user) {
                         return DropdownMenuItem<String>(
                           value: user['id'].toString(),
                           child: Text(user['name'] ?? 'Unknown'),
@@ -62,11 +62,11 @@ class AdminFilterWidget extends StatelessWidget {
                       }),
                     ],
                     onChanged: (value) {
-                      controller.filterByUser(value ?? '');
+                      controller.filterByEmployee(value ?? '');
                     },
                   ),
                 ),
-                if (controller.selectedUserId.value.isNotEmpty)
+                if (controller.selectedEmployeeId.value.isNotEmpty)
                   Padding(
                     padding: const EdgeInsets.only(left: 8),
                     child: IconButton(

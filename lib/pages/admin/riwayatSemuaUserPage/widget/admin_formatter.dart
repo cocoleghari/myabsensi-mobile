@@ -90,12 +90,12 @@ class AdminFormatter {
     //   result = result.replaceFirst('localhost', '192.168.1.10:8000');
     // }
 
-    if (result.contains('192.168.100.104') && !result.contains(':8000')) {
-      result = result.replaceFirst('192.168.100.104', '192.168.100.104:8000');
+    if (result.contains('192.168.0.100') && !result.contains(':8000')) {
+      result = result.replaceFirst('192.168.0.100', '192.168.0.100:8000');
     }
 
     if (result.contains('localhost')) {
-      result = result.replaceFirst('localhost', '192.168.100.104:8000');
+      result = result.replaceFirst('localhost', '192.168.0.100:8000');
     }
 
     return result;

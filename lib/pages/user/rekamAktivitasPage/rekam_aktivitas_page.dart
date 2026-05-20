@@ -163,31 +163,21 @@ class RekamAktivitasPage extends GetView<RekamAktivitasController> {
   }
 
   Widget _buildHeaderUserSection(AuthController authController) {
-    final name = authController.userName;
-    final photoUrl = authController.user['photo_url']?.toString() ?? '';
-    final jabatan =
-        authController.user['jabatan']?.toString() ??
-        authController.user['role']?.toString() ??
-        'Karyawan'; // fallback jika keduanya null
+    final name = authController.employeeFullName.isNotEmpty
+        ? authController.employeeFullName
+        : authController.userName;
+    final photoUrl = authController.photoUrl;
+    final jabatan = authController.positionName.isNotEmpty
+        ? authController.positionName
+        : authController.departmentName.isNotEmpty
+        ? authController.departmentName
+        : authController.userRole;
 
     return Row(
       children: [
-        // Avatar
-        CircleAvatar(
-          radius: 22,
-          backgroundColor: Colors.white.withOpacity(0.3),
-          backgroundImage: photoUrl.isNotEmpty ? NetworkImage(photoUrl) : null,
-          onBackgroundImageError: photoUrl.isNotEmpty ? (_, __) {} : null,
-          child: photoUrl.isEmpty
-              ? Text(
-                  _getInitials(name),
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                  ),
-                )
-              : null,
+        _buildHeaderAvatar(
+          photoUrl: photoUrl.isNotEmpty ? photoUrl : null,
+          initial: _getInitials(name),
         ),
         const SizedBox(width: 12),
         Expanded(
@@ -204,7 +194,7 @@ class RekamAktivitasPage extends GetView<RekamAktivitasController> {
                 overflow: TextOverflow.ellipsis,
               ),
               Text(
-                jabatan, // <-- diganti dari hardcoded 'Karyawan'
+                jabatan,
                 style: TextStyle(
                   fontSize: 12,
                   color: Colors.white.withOpacity(0.7),
@@ -219,6 +209,86 @@ class RekamAktivitasPage extends GetView<RekamAktivitasController> {
           value: '${controller.activities.length} item',
         ),
       ],
+    );
+  }
+
+  Widget _buildHeaderAvatar({
+    required String? photoUrl,
+    required String initial,
+  }) {
+    final hasPhoto = photoUrl != null && photoUrl.isNotEmpty;
+
+    // Tidak ada foto → avatar initial biasa tanpa border
+    if (!hasPhoto) {
+      return Container(
+        width: 50, // 42 (foto) + 4 padding kiri + 4 padding kanan
+        height: 50,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: Colors.white.withOpacity(0.2),
+        ),
+        child: Center(
+          child: Text(
+            initial,
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+          ),
+        ),
+      );
+    }
+
+    // Ada foto → dengan gradient border
+    return CustomPaint(
+      painter: _GradientBorderPainter(
+        gradient: const SweepGradient(
+          colors: [
+            Color(0xFF42A5F5),
+            Color.fromARGB(255, 241, 245, 31),
+            Color.fromARGB(255, 228, 38, 38),
+            Color.fromARGB(255, 30, 161, 223),
+            Color(0xFF42A5F5),
+          ],
+        ),
+        strokeWidth: 2,
+        gap: 2,
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(4),
+        child: ClipOval(
+          child: SizedBox(
+            width: 42,
+            height: 42,
+            child: Image.network(
+              photoUrl,
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) => _headerInitial(initial),
+              loadingBuilder: (_, child, progress) {
+                if (progress == null) return child;
+                return _headerInitial(initial);
+              },
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _headerInitial(String initial) {
+    return Container(
+      color: Colors.white.withOpacity(0.2),
+      child: Center(
+        child: Text(
+          initial,
+          style: const TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+        ),
+      ),
     );
   }
 
@@ -476,27 +546,11 @@ class RekamAktivitasPage extends GetView<RekamAktivitasController> {
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Container(
-          padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(
-            color: const Color(0xFFE3EDF8),
-            shape: BoxShape.circle,
-          ),
-          child: Icon(Icons.schedule, size: 48, color: _gradientMid),
-        ),
-        const SizedBox(height: 16),
-        Text(
-          'Belum ada aktivitas',
-          style: TextStyle(
-            fontSize: 15,
-            fontWeight: FontWeight.w700,
-            color: Colors.grey[700],
-          ),
-        ),
-        const SizedBox(height: 6),
-        Text(
-          'Tap tombol + untuk menambah aktivitas',
-          style: TextStyle(fontSize: 13, color: Colors.grey[500]),
+        Image.asset(
+          'assets/images/tidak_ada_aktivitas.png',
+          width: 270,
+          height: 270,
+          fit: BoxFit.contain,
         ),
         const SizedBox(height: 80),
       ],
@@ -555,7 +609,7 @@ class RekamAktivitasPage extends GetView<RekamAktivitasController> {
                   child: Icon(
                     Icons.assignment_outlined,
                     size: 20,
-                    color: _gradientMid,
+                    color: const Color.fromARGB(255, 10, 160, 30),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -576,7 +630,7 @@ class RekamAktivitasPage extends GetView<RekamAktivitasController> {
                           tipeNama,
                           style: TextStyle(
                             fontSize: 10,
-                            color: _gradientStart,
+                            color: const Color.fromARGB(255, 10, 160, 30),
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -832,4 +886,33 @@ class RekamAktivitasPage extends GetView<RekamAktivitasController> {
       return null;
     }
   }
+}
+
+class _GradientBorderPainter extends CustomPainter {
+  final Gradient gradient;
+  final double strokeWidth;
+  final double gap;
+
+  const _GradientBorderPainter({
+    required this.gradient,
+    required this.strokeWidth,
+    required this.gap,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = (size.width / 2) - strokeWidth / 2;
+    final rect = Rect.fromCircle(center: center, radius: radius);
+    final paint = Paint()
+      ..shader = gradient.createShader(rect)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeWidth
+      ..isAntiAlias = true;
+    canvas.drawCircle(center, radius, paint);
+  }
+
+  @override
+  bool shouldRepaint(_GradientBorderPainter old) =>
+      old.strokeWidth != strokeWidth || old.gap != gap;
 }

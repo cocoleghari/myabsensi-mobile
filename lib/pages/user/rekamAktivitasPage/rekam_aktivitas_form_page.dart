@@ -552,6 +552,7 @@ class RekamAktivitasFormPage extends GetView<RekamAktivitasFormController> {
       final isEmpty = controller.tipeAktivitasList.isEmpty;
       final needsTujuan = controller.needsTujuan;
       final needsKendaraan = controller.needsTujuanDanKendaraan;
+      final selected = controller.selectedTipeAktivitas.value;
 
       return _buildCard(
         child: Column(
@@ -560,81 +561,115 @@ class RekamAktivitasFormPage extends GetView<RekamAktivitasFormController> {
             _buildSectionTitle('Tipe Aktivitas'),
             const SizedBox(height: 10),
 
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              decoration: BoxDecoration(
-                color: _bg,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.grey[200]!),
-              ),
-              child: isLoading
-                  ? const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 14),
-                      child: Center(
-                        child: SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: _gradientMid,
+            // ── Trigger tap buka bottom sheet ──────────────────
+            GestureDetector(
+              onTap: isLoading || isEmpty
+                  ? (isEmpty ? controller.fetchTipeAktivitas : null)
+                  : () => _showTipeBottomSheet(),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 14,
+                ),
+                decoration: BoxDecoration(
+                  color: _bg,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: selected != null
+                        ? _gradientMid
+                        : Colors.grey.shade200,
+                    width: selected != null ? 1.5 : 1,
+                  ),
+                ),
+                child: isLoading
+                    ? Row(
+                        children: [
+                          SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: _gradientMid,
+                            ),
                           ),
-                        ),
-                      ),
-                    )
-                  : isEmpty
-                  ? GestureDetector(
-                      onTap: controller.fetchTipeAktivitas,
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.refresh, size: 16, color: _gradientMid),
-                            const SizedBox(width: 6),
-                            Text(
-                              'Gagal memuat, tap untuk retry',
+                          const SizedBox(width: 10),
+                          Text(
+                            'Memuat tipe aktivitas...',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: Colors.grey[400],
+                            ),
+                          ),
+                        ],
+                      )
+                    : isEmpty
+                    ? Row(
+                        children: [
+                          Icon(
+                            Icons.refresh,
+                            size: 16,
+                            color: Colors.orange[400],
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Gagal memuat — tap untuk retry',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: Colors.grey[500],
+                            ),
+                          ),
+                        ],
+                      )
+                    : Row(
+                        children: [
+                          Container(
+                            width: 32,
+                            height: 32,
+                            decoration: BoxDecoration(
+                              color: selected != null
+                                  ? _gradientMid.withOpacity(0.1)
+                                  : Colors.grey.shade200,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Icon(
+                              selected != null
+                                  ? Icons.check_circle_rounded
+                                  : Icons.category_outlined,
+                              size: 16,
+                              color: selected != null
+                                  ? _gradientMid
+                                  : Colors.grey[400],
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              selected != null
+                                  ? selected['nama'] ?? '-'
+                                  : 'Pilih tipe aktivitas',
                               style: TextStyle(
-                                fontSize: 13,
-                                color: Colors.grey[500],
+                                fontSize: 14,
+                                fontWeight: selected != null
+                                    ? FontWeight.w600
+                                    : FontWeight.w400,
+                                color: selected != null
+                                    ? const Color(0xFF1A1F36)
+                                    : Colors.grey[400],
                               ),
                             ),
-                          ],
-                        ),
-                      ),
-                    )
-                  : DropdownButtonHideUnderline(
-                      child: DropdownButton<Map<String, dynamic>>(
-                        isExpanded: true,
-                        value: controller.selectedTipeAktivitas.value,
-                        hint: Text(
-                          'Pilih tipe aktivitas',
-                          style: TextStyle(
-                            color: Colors.grey[400],
-                            fontSize: 14,
                           ),
-                        ),
-                        icon: Icon(
-                          Icons.keyboard_arrow_down,
-                          color: _gradientMid,
-                        ),
-                        items: controller.tipeAktivitasList.map((tipe) {
-                          return DropdownMenuItem<Map<String, dynamic>>(
-                            value: tipe,
-                            child: Text(
-                              tipe['nama'] ?? '',
-                              style: const TextStyle(fontSize: 14),
-                            ),
-                          );
-                        }).toList(),
-                        onChanged: (val) {
-                          controller.selectedTipeAktivitas.value = val;
-                          controller.tujuanController.clear();
-                          controller.kendaraanNopolController.clear();
-                        },
+                          Icon(
+                            Icons.keyboard_arrow_down_rounded,
+                            color: selected != null
+                                ? _gradientMid
+                                : Colors.grey[400],
+                          ),
+                        ],
                       ),
-                    ),
+              ),
             ),
 
+            // ── Tujuan ─────────────────────────────────────────
             if (needsTujuan) ...[
               const SizedBox(height: 14),
               Text(
@@ -652,6 +687,7 @@ class RekamAktivitasFormPage extends GetView<RekamAktivitasFormController> {
               ),
             ],
 
+            // ── Kendaraan ──────────────────────────────────────
             if (needsKendaraan) ...[
               const SizedBox(height: 14),
               Text(
@@ -672,6 +708,241 @@ class RekamAktivitasFormPage extends GetView<RekamAktivitasFormController> {
         ),
       );
     });
+  }
+
+  // ── BOTTOM SHEET TIPE ─────────────────────────────────────────────────
+  void _showTipeBottomSheet() {
+    final searchController = TextEditingController();
+    final filtered = controller.tipeAktivitasList.toList().obs;
+
+    Get.bottomSheet(
+      Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Handle
+            Container(
+              margin: const EdgeInsets.only(top: 12),
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey[300],
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // Judul
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Row(
+                children: [
+                  Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: _gradientMid.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(
+                      Icons.category_rounded,
+                      size: 18,
+                      color: _gradientMid,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  const Text(
+                    'Pilih Tipe Aktivitas',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF1A1F36),
+                    ),
+                  ),
+                  const Spacer(),
+                  GestureDetector(
+                    onTap: () => Get.back(),
+                    child: Container(
+                      width: 32,
+                      height: 32,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade100,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(
+                        Icons.close_rounded,
+                        size: 16,
+                        color: Color(0xFF8A94A6),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // Search
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: TextField(
+                controller: searchController,
+                autofocus: true,
+                onChanged: (val) {
+                  final q = val.toLowerCase();
+                  filtered.value = controller.tipeAktivitasList
+                      .where((t) => (t['nama'] ?? '').toLowerCase().contains(q))
+                      .toList();
+                },
+                decoration: InputDecoration(
+                  hintText: 'Cari tipe aktivitas...',
+                  hintStyle: TextStyle(color: Colors.grey[400], fontSize: 13),
+                  prefixIcon: Icon(
+                    Icons.search_rounded,
+                    size: 18,
+                    color: Colors.grey[400],
+                  ),
+                  suffixIcon: Obx(
+                    () => filtered.length != controller.tipeAktivitasList.length
+                        ? GestureDetector(
+                            onTap: () {
+                              searchController.clear();
+                              filtered.value = controller.tipeAktivitasList
+                                  .toList();
+                            },
+                            child: Icon(
+                              Icons.close_rounded,
+                              size: 16,
+                              color: Colors.grey[400],
+                            ),
+                          )
+                        : const SizedBox.shrink(),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 12,
+                  ),
+                  filled: true,
+                  fillColor: const Color(0xFFF2F4F7),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none,
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(
+                      color: _gradientMid,
+                      width: 1.5,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+
+            // List
+            Obx(() {
+              if (filtered.isEmpty) {
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 32),
+                  child: Column(
+                    children: [
+                      Icon(
+                        Icons.search_off_rounded,
+                        size: 40,
+                        color: Colors.grey[300],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Tipe tidak ditemukan',
+                        style: TextStyle(fontSize: 13, color: Colors.grey[400]),
+                      ),
+                    ],
+                  ),
+                );
+              }
+
+              return ConstrainedBox(
+                constraints: BoxConstraints(maxHeight: Get.height * 0.4),
+                child: ListView.separated(
+                  shrinkWrap: true,
+                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+                  itemCount: filtered.length,
+                  separatorBuilder: (_, __) =>
+                      Divider(height: 1, color: Colors.grey.shade100),
+                  itemBuilder: (_, index) {
+                    final tipe = filtered[index];
+                    final isSelected =
+                        controller.selectedTipeAktivitas.value?['id'] ==
+                        tipe['id'];
+
+                    return InkWell(
+                      onTap: () {
+                        controller.selectedTipeAktivitas.value = tipe;
+                        controller.tujuanController.clear();
+                        controller.kendaraanNopolController.clear();
+                        Get.back();
+                      },
+                      borderRadius: BorderRadius.circular(12),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 38,
+                              height: 38,
+                              decoration: BoxDecoration(
+                                color: isSelected
+                                    ? _gradientMid.withOpacity(0.12)
+                                    : Colors.grey.shade100,
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Icon(
+                                Icons.label_rounded,
+                                size: 18,
+                                color: isSelected
+                                    ? _gradientMid
+                                    : Colors.grey[400],
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                tipe['nama'] ?? '-',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: isSelected
+                                      ? FontWeight.w700
+                                      : FontWeight.w500,
+                                  color: isSelected
+                                      ? _gradientMid
+                                      : const Color(0xFF1A1F36),
+                                ),
+                              ),
+                            ),
+                            if (isSelected)
+                              const Icon(
+                                Icons.check_circle_rounded,
+                                size: 20,
+                                color: _gradientMid,
+                              ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              );
+            }),
+          ],
+        ),
+      ),
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+    );
   }
 
   InputDecoration _inputDecoration(String hint) {

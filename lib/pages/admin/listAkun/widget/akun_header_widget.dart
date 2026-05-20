@@ -2,14 +2,20 @@ import 'package:flutter/material.dart';
 
 class AkunHeaderWidget extends StatelessWidget {
   final int totalUsers;
-  final int totalAdmins;
-  final int totalRegularUsers;
+  final int totalSuperAdmin;
+  final int totalAdmin;
+  final int totalHrd;
+  final int totalManager;
+  final int totalEmployee;
 
   const AkunHeaderWidget({
     super.key,
     required this.totalUsers,
-    required this.totalAdmins,
-    required this.totalRegularUsers,
+    required this.totalSuperAdmin,
+    required this.totalAdmin,
+    required this.totalHrd,
+    required this.totalManager,
+    required this.totalEmployee,
   });
 
   @override
@@ -50,7 +56,11 @@ class AkunHeaderWidget extends StatelessWidget {
             color: Colors.blue.shade50,
             shape: BoxShape.circle,
           ),
-          child: const Icon(Icons.people, color: Colors.blue, size: 30),
+          child: const Icon(
+            Icons.manage_accounts,
+            color: Colors.blue,
+            size: 30,
+          ),
         ),
         const SizedBox(width: 16),
         Expanded(
@@ -58,7 +68,7 @@ class AkunHeaderWidget extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(
-                'Manajemen User',
+                'Manajemen Akun',
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 4),
@@ -69,101 +79,112 @@ class AkunHeaderWidget extends StatelessWidget {
             ],
           ),
         ),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          decoration: BoxDecoration(
-            color: Colors.purple.shade50,
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                Icons.admin_panel_settings,
-                size: 14,
-                color: Colors.purple.shade700,
-              ),
-              const SizedBox(width: 4),
-              Text(
-                'Admin',
-                style: TextStyle(
-                  color: Colors.purple.shade700,
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
-          ),
-        ),
       ],
     );
   }
 
   Widget _buildStatistikRow() {
-    return Row(
+    return Column(
       children: [
-        Expanded(
-          child: Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.purple.shade50,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.purple.shade200),
+        // Baris 1: superadmin + admin + hrd
+        Row(
+          children: [
+            _buildStatCard(
+              icon: Icons.star,
+              label: 'Superadmin',
+              count: totalSuperAdmin,
+              bgColor: Colors.purple.shade50,
+              fgColor: Colors.purple.shade700,
+              borderColor: Colors.purple.shade200,
             ),
-            child: Column(
-              children: [
-                Icon(
-                  Icons.admin_panel_settings,
-                  color: Colors.purple.shade700,
-                  size: 24,
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  '$totalAdmins',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.purple.shade700,
-                  ),
-                ),
-                Text(
-                  'Admin',
-                  style: TextStyle(fontSize: 12, color: Colors.purple.shade700),
-                ),
-              ],
+            const SizedBox(width: 8),
+            _buildStatCard(
+              icon: Icons.admin_panel_settings,
+              label: 'Admin',
+              count: totalAdmin,
+              bgColor: Colors.purple.shade50,
+              fgColor: Colors.purple.shade600,
+              borderColor: Colors.purple.shade100,
             ),
-          ),
+            const SizedBox(width: 8),
+            _buildStatCard(
+              icon: Icons.people,
+              label: 'HRD',
+              count: totalHrd,
+              bgColor: Colors.teal.shade50,
+              fgColor: Colors.teal.shade700,
+              borderColor: Colors.teal.shade200,
+            ),
+          ],
         ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.blue.shade50,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.blue.shade200),
+        const SizedBox(height: 8),
+        // Baris 2: manager + employee
+        Row(
+          children: [
+            _buildStatCard(
+              icon: Icons.business_center,
+              label: 'Manager',
+              count: totalManager,
+              bgColor: Colors.orange.shade50,
+              fgColor: Colors.orange.shade800,
+              borderColor: Colors.orange.shade200,
             ),
-            child: Column(
-              children: [
-                Icon(Icons.person, color: Colors.blue.shade700, size: 24),
-                const SizedBox(height: 4),
-                Text(
-                  '$totalRegularUsers',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.blue.shade700,
-                  ),
-                ),
-                Text(
-                  'User',
-                  style: TextStyle(fontSize: 12, color: Colors.blue.shade700),
-                ),
-              ],
+            const SizedBox(width: 8),
+            _buildStatCard(
+              icon: Icons.person,
+              label: 'Employee',
+              count: totalEmployee,
+              bgColor: Colors.blue.shade50,
+              fgColor: Colors.blue.shade700,
+              borderColor: Colors.blue.shade200,
             ),
-          ),
+            // Spacer agar 2 card di baris 2 lebarnya sama dengan baris 1
+            const SizedBox(width: 8),
+            Expanded(child: const SizedBox()),
+          ],
         ),
       ],
+    );
+  }
+
+  Widget _buildStatCard({
+    required IconData icon,
+    required String label,
+    required int count,
+    required Color bgColor,
+    required Color fgColor,
+    required Color borderColor,
+  }) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+        decoration: BoxDecoration(
+          color: bgColor,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: borderColor),
+        ),
+        child: Column(
+          children: [
+            Icon(icon, color: fgColor, size: 20),
+            const SizedBox(height: 4),
+            Text(
+              '$count',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: fgColor,
+              ),
+            ),
+            Text(
+              label,
+              style: TextStyle(fontSize: 11, color: fgColor),
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

@@ -4,6 +4,7 @@ import '../../../../controllers/pusat_lokasi_controller.dart';
 import '../../../../models/pusat_lokasi_model.dart';
 import '../modals/edit_pusat_lokasi_modal.dart';
 import '../modals/detail_pusat_lokasi_modal.dart';
+import '../modals/bulk_assign_karyawan_modal.dart';
 
 class PusatLokasiTable extends StatelessWidget {
   final PusatLokasiController controller;
@@ -13,23 +14,7 @@ class PusatLokasiTable extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Obx(() {
-      // ========== DEBUGGING ==========
-      print('🔄 Building PusatLokasiTable');
-      print('   - isLoading: ${controller.isLoading.value}');
-      print('   - data count: ${controller.filteredLokasis.length}');
-      print('   - error: ${controller.errorMessage.value}');
-
-      // FALLBACK: Jika data sudah ada tapi loading masih true, tampilkan data
-      if (controller.isLoading.value && controller.filteredLokasis.isNotEmpty) {
-        print(
-          '⚠️ WARNING: isLoading true tapi data sudah ada! Memaksa tampilkan data...',
-        );
-        // LANGSUNG TAMPILKAN DATA
-        return _buildDataTable(context);
-      }
-
-      // LOADING STATE
-      if (controller.isLoading.value) {
+      if (controller.isLoading.value && controller.filteredLokasis.isEmpty) {
         return const Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -42,7 +27,6 @@ class PusatLokasiTable extends StatelessWidget {
         );
       }
 
-      // ERROR STATE
       if (controller.errorMessage.isNotEmpty) {
         return Center(
           child: Padding(
@@ -50,7 +34,7 @@ class PusatLokasiTable extends StatelessWidget {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.error, color: Colors.red, size: 64),
+                Icon(Icons.error_outline, color: Colors.red, size: 64),
                 const SizedBox(height: 16),
                 Text(
                   controller.errorMessage.value,
@@ -58,9 +42,10 @@ class PusatLokasiTable extends StatelessWidget {
                   style: const TextStyle(color: Colors.red),
                 ),
                 const SizedBox(height: 16),
-                ElevatedButton(
+                ElevatedButton.icon(
                   onPressed: () => controller.fetchPusatLokasi(),
-                  child: const Text('Coba Lagi'),
+                  icon: const Icon(Icons.refresh),
+                  label: const Text('Coba Lagi'),
                 ),
               ],
             ),
@@ -68,254 +53,343 @@ class PusatLokasiTable extends StatelessWidget {
         );
       }
 
-      // EMPTY STATE
       if (controller.filteredLokasis.isEmpty) {
         return Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.location_off, size: 64, color: Colors.grey.shade400),
+              Icon(Icons.location_off, size: 64, color: Colors.grey.shade300),
               const SizedBox(height: 16),
               Text(
                 controller.searchQuery.value.isEmpty
                     ? 'Belum ada data pusat lokasi'
                     : 'Tidak ada hasil untuk "${controller.searchQuery.value}"',
-                style: TextStyle(fontSize: 16, color: Colors.grey.shade600),
+                style: TextStyle(fontSize: 15, color: Colors.grey.shade500),
               ),
-              const SizedBox(height: 8),
-              if (controller.searchQuery.value.isNotEmpty)
+              if (controller.searchQuery.value.isNotEmpty) ...[
+                const SizedBox(height: 8),
                 TextButton(
                   onPressed: () => controller.search(''),
                   child: const Text('Reset Pencarian'),
                 ),
+              ],
             ],
           ),
         );
       }
 
-      // TAMPILKAN DATA
-      return _buildDataTable(context);
+      return ListView.separated(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        itemCount: controller.filteredLokasis.length,
+        separatorBuilder: (_, __) => const SizedBox(height: 10),
+        itemBuilder: (context, index) {
+          final item = controller.filteredLokasis[index];
+          final isSelected = controller.selectedIds.contains(item.id);
+
+          return _buildCard(context, item, isSelected, index);
+        },
+      );
     });
   }
 
-  // ========== BUILD DATA TABLE ==========
-  Widget _buildDataTable(BuildContext context) {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: SingleChildScrollView(
-        scrollDirection: Axis.vertical,
-        child: DataTable(
-          headingRowColor: MaterialStateProperty.all(Colors.blue.shade50),
-          headingTextStyle: TextStyle(
-            fontWeight: FontWeight.bold,
-            color: Colors.blue.shade700,
+  Widget _buildCard(
+    BuildContext context,
+    PusatLokasiModel item,
+    bool isSelected,
+    int index,
+  ) {
+    return GestureDetector(
+      onTap: () {
+        if (controller.isSelectionMode.value) {
+          controller.toggleSelectItem(item.id);
+        } else {
+          DetailPusatLokasiModal.show(context, item);
+        }
+      },
+      onLongPress: () {
+        if (!controller.isSelectionMode.value) {
+          controller.toggleSelectionMode();
+          controller.toggleSelectItem(item.id);
+        }
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        decoration: BoxDecoration(
+          color: isSelected ? Colors.blue.shade50 : Colors.white,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(
+            color: isSelected ? Colors.blue.shade400 : Colors.transparent,
+            width: 1.5,
           ),
-          columnSpacing: 20,
-          horizontalMargin: 16,
-          columns: [
-            if (controller.isSelectionMode.value)
-              const DataColumn(label: Text('Pilih')),
-            const DataColumn(label: Text('No')),
-            const DataColumn(label: Text('Nama Lokasi')),
-            const DataColumn(label: Text('Titik Kordinat')),
-            const DataColumn(label: Text('Keterangan')),
-            const DataColumn(label: Text('Aksi')),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 10,
+              offset: const Offset(0, 3),
+            ),
           ],
-          rows: List.generate(controller.filteredLokasis.length, (index) {
-            final item = controller.filteredLokasis[index];
-            final isSelected = controller.selectedIds.contains(item.id);
-
-            return DataRow(
-              selected: isSelected,
-              onSelectChanged: controller.isSelectionMode.value
-                  ? (selected) => controller.toggleSelectItem(item.id)
-                  : (_) {
-                      DetailPusatLokasiModal.show(context, item);
-                    },
-              cells: [
-                if (controller.isSelectionMode.value)
-                  DataCell(
-                    Checkbox(
-                      value: isSelected,
-                      onChanged: (_) => controller.toggleSelectItem(item.id),
-                      activeColor: Colors.blue,
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+          child: Row(
+            children: [
+              // Avatar / Checkbox
+              if (controller.isSelectionMode.value)
+                Padding(
+                  padding: const EdgeInsets.only(right: 12),
+                  child: Checkbox(
+                    value: isSelected,
+                    onChanged: (_) => controller.toggleSelectItem(item.id),
+                    activeColor: Colors.blue,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(5),
                     ),
                   ),
-                // Nomor
-                DataCell(
-                  InkWell(
-                    onTap: () {
-                      if (!controller.isSelectionMode.value) {
-                        DetailPusatLokasiModal.show(context, item);
-                      }
-                    },
-                    borderRadius: BorderRadius.circular(20),
-                    child: Container(
-                      width: 24,
-                      height: 24,
-                      decoration: BoxDecoration(
-                        color: Colors.blue.shade100,
-                        shape: BoxShape.circle,
-                      ),
-                      child: Center(
-                        child: Text(
-                          '${index + 1}',
-                          style: TextStyle(
-                            color: Colors.blue.shade700,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 12,
+                )
+              else
+                Container(
+                  width: 46,
+                  height: 46,
+                  margin: const EdgeInsets.only(right: 14),
+                  decoration: BoxDecoration(
+                    gradient: item.isActive
+                        ? LinearGradient(
+                            colors: [
+                              Colors.blue.shade400,
+                              Colors.blue.shade600,
+                            ],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          )
+                        : LinearGradient(
+                            colors: [
+                              Colors.grey.shade300,
+                              Colors.grey.shade400,
+                            ],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                    borderRadius: BorderRadius.circular(14),
+                    boxShadow: item.isActive
+                        ? [
+                            BoxShadow(
+                              color: Colors.blue.withOpacity(0.25),
+                              blurRadius: 8,
+                              offset: const Offset(0, 3),
+                            ),
+                          ]
+                        : [],
+                  ),
+                  child: const Icon(
+                    Icons.location_on_rounded,
+                    color: Colors.white,
+                    size: 22,
+                  ),
+                ),
+
+              // Konten
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            item.namaLokasi,
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.black87,
+                              letterSpacing: -0.2,
+                            ),
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                      ),
+                        const SizedBox(width: 8),
+                        _buildStatusBadge(item.isActive),
+                      ],
                     ),
-                  ),
-                ),
-                // Nama Lokasi
-                DataCell(
-                  InkWell(
-                    onTap: () {
-                      if (!controller.isSelectionMode.value) {
-                        DetailPusatLokasiModal.show(context, item);
-                      }
-                    },
-                    child: Container(
-                      constraints: const BoxConstraints(maxWidth: 200),
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                      child: Text(
-                        item.namaLokasi,
-                        style: const TextStyle(fontWeight: FontWeight.w500),
-                        overflow: TextOverflow.ellipsis,
-                      ),
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        Icon(
+                          item.isKordinatValid
+                              ? Icons.gps_fixed_rounded
+                              : Icons.gps_not_fixed_rounded,
+                          size: 12,
+                          color: item.isKordinatValid
+                              ? Colors.green.shade600
+                              : Colors.orange.shade600,
+                        ),
+                        const SizedBox(width: 5),
+                        Expanded(
+                          child: Text(
+                            item.formattedKordinat,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey.shade500,
+                              fontFeatures: const [
+                                FontFeature.tabularFigures(),
+                              ],
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
-                ),
-                // Titik Kordinat
-                DataCell(
-                  InkWell(
-                    onTap: () {
-                      if (!controller.isSelectionMode.value) {
-                        DetailPusatLokasiModal.show(context, item);
-                      }
-                    },
-                    child: Container(
-                      constraints: const BoxConstraints(maxWidth: 150),
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                      child: Row(
+                    if (item.keterangan != null &&
+                        item.keterangan!.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Row(
                         children: [
                           Icon(
-                            item.isKordinatValid
-                                ? Icons.check_circle
-                                : Icons.warning,
-                            size: 14,
-                            color: item.isKordinatValid
-                                ? Colors.green
-                                : Colors.orange,
+                            Icons.notes_rounded,
+                            size: 12,
+                            color: Colors.grey.shade400,
                           ),
-                          const SizedBox(width: 4),
+                          const SizedBox(width: 5),
                           Expanded(
                             child: Text(
-                              item.formattedKordinat,
-                              overflow: TextOverflow.ellipsis,
+                              item.keterangan!,
                               style: TextStyle(
-                                color: item.isKordinatValid
-                                    ? Colors.black87
-                                    : Colors.orange,
+                                fontSize: 12,
+                                color: Colors.grey.shade400,
+                                fontStyle: FontStyle.italic,
                               ),
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                         ],
                       ),
-                    ),
-                  ),
-                ),
-                // Keterangan
-                DataCell(
-                  InkWell(
-                    onTap: () {
-                      if (!controller.isSelectionMode.value) {
-                        DetailPusatLokasiModal.show(context, item);
-                      }
-                    },
-                    child: Container(
-                      constraints: const BoxConstraints(maxWidth: 200),
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                      child: Text(
-                        item.keterangan ?? '-',
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontStyle: FontStyle.italic),
-                      ),
-                    ),
-                  ),
-                ),
-                // Aksi
-                DataCell(
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      // Detail
-                      IconButton(
-                        icon: Container(
-                          padding: const EdgeInsets.all(4),
-                          decoration: BoxDecoration(
-                            color: Colors.blue.shade50,
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(
-                            Icons.visibility,
-                            color: Colors.blue,
-                            size: 18,
-                          ),
-                        ),
-                        onPressed: () {
-                          DetailPusatLokasiModal.show(context, item);
-                        },
-                        tooltip: 'Detail',
-                      ),
-                      // Edit
-                      IconButton(
-                        icon: Container(
-                          padding: const EdgeInsets.all(4),
-                          decoration: BoxDecoration(
-                            color: Colors.orange.shade50,
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(
-                            Icons.edit,
-                            color: Colors.orange,
-                            size: 18,
-                          ),
-                        ),
-                        onPressed: () {
-                          EditPusatLokasiModal.show(context, controller, item);
-                        },
-                        tooltip: 'Edit',
-                      ),
-                      // Hapus
-                      IconButton(
-                        icon: Container(
-                          padding: const EdgeInsets.all(4),
-                          decoration: BoxDecoration(
-                            color: Colors.red.shade50,
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(
-                            Icons.delete,
-                            color: Colors.red,
-                            size: 18,
-                          ),
-                        ),
-                        onPressed: () {
-                          _showDeleteConfirmation(context, controller, item);
-                        },
-                        tooltip: 'Hapus',
-                      ),
                     ],
-                  ),
+                  ],
                 ),
-              ],
-            );
-          }),
+              ),
+
+              // Menu
+              if (!controller.isSelectionMode.value)
+                PopupMenuButton<String>(
+                  icon: Container(
+                    width: 32,
+                    height: 32,
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade100,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(
+                      Icons.more_vert_rounded,
+                      color: Colors.grey.shade500,
+                      size: 18,
+                    ),
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  elevation: 8,
+                  onSelected: (value) {
+                    if (value == 'detail') {
+                      DetailPusatLokasiModal.show(context, item);
+                    } else if (value == 'assign') {
+                      // ← BARU
+                      BulkAssignKaryawanModal.show(context, controller, item);
+                    } else if (value == 'edit') {
+                      EditPusatLokasiModal.show(context, controller, item);
+                    } else if (value == 'hapus') {
+                      _showDeleteConfirmation(context, controller, item);
+                    }
+                  },
+                  itemBuilder: (_) => [
+                    _buildMenuItem(
+                      value: 'detail',
+                      icon: Icons.visibility_outlined,
+                      label: 'Detail',
+                      color: Colors.blue,
+                    ),
+                    _buildMenuItem(
+                      value: 'assign', // ← BARU
+                      icon: Icons.people_alt_rounded,
+                      label: 'Assign Karyawan',
+                      color: Colors.teal,
+                    ),
+                    _buildMenuItem(
+                      value: 'edit',
+                      icon: Icons.edit_outlined,
+                      label: 'Edit',
+                      color: Colors.orange,
+                    ),
+                    _buildMenuItem(
+                      value: 'hapus',
+                      icon: Icons.delete_outline_rounded,
+                      label: 'Hapus',
+                      color: Colors.red,
+                    ),
+                  ],
+                ),
+            ],
+          ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildStatusBadge(bool isActive) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+      decoration: BoxDecoration(
+        color: isActive ? Colors.green.shade50 : Colors.red.shade50,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: isActive ? Colors.green.shade200 : Colors.red.shade200,
+          width: 1,
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 5,
+            height: 5,
+            decoration: BoxDecoration(
+              color: isActive ? Colors.green.shade600 : Colors.red.shade400,
+              shape: BoxShape.circle,
+            ),
+          ),
+          const SizedBox(width: 5),
+          Text(
+            isActive ? 'Aktif' : 'Nonaktif',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: isActive ? Colors.green.shade700 : Colors.red.shade500,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  PopupMenuItem<String> _buildMenuItem({
+    required String value,
+    required IconData icon,
+    required String label,
+    required Color color,
+  }) {
+    return PopupMenuItem(
+      value: value,
+      child: Row(
+        children: [
+          Icon(icon, size: 18, color: color),
+          const SizedBox(width: 10),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 13,
+              color: color,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
       ),
     );
   }

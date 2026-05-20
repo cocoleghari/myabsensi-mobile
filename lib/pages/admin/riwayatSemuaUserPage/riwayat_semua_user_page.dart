@@ -18,7 +18,7 @@ class RiwayatSemuaUserPage extends StatelessWidget {
     final auth = Get.find<AuthController>();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      controller.fetchAllUsers();
+      controller.fetchAllEmployees();
       controller.fetchAllAbsensi();
     });
 
@@ -37,7 +37,7 @@ class RiwayatSemuaUserPage extends StatelessWidget {
             icon: const Icon(Icons.refresh),
             onPressed: () {
               controller.resetFilter();
-              controller.fetchAllUsers();
+              controller.fetchAllEmployees();
               controller.fetchAllAbsensi();
             },
             tooltip: 'Refresh',
@@ -45,7 +45,7 @@ class RiwayatSemuaUserPage extends StatelessWidget {
         ],
       ),
       body: Obx(() {
-        if (controller.isLoading.value || controller.isLoadingUsers.value) {
+        if (controller.isLoading.value || controller.isLoadingEmployees.value) {
           return const Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -91,7 +91,7 @@ class RiwayatSemuaUserPage extends StatelessWidget {
             const Divider(height: 1),
 
             AdminSummaryWidget(
-              totalUser: controller.semuaUsers.length,
+              totalUser: controller.semuaEmployees.length,
               totalAbsensi: controller.semuaAbsensi.length,
               hariAktif: controller.getUniqueDatesCount(),
             ),
@@ -107,7 +107,7 @@ class RiwayatSemuaUserPage extends StatelessWidget {
   Widget _buildAbsensiList(AdminAbsensiController controller) {
     final groupedData = AdminFormatter.groupByUserAndDate(
       controller.semuaAbsensi,
-      (userId) => controller.getUserNameById(userId),
+      (userId) => controller.getEmployeeNameById(userId),
     );
     final userNames = groupedData.keys.toList();
 

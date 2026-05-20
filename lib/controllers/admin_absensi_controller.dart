@@ -10,12 +10,14 @@ class AdminAbsensiController extends GetxController {
   final auth = Get.find<AuthController>();
 
   var semuaAbsensi = <Map<String, dynamic>>[].obs;
-  var semuaUsers = <Map<String, dynamic>>[].obs;
+  // FIXED: renamed semuaUsers → semuaEmployees, tipe sama
+  var semuaEmployees = <Map<String, dynamic>>[].obs;
   var isLoading = false.obs;
-  var isLoadingUsers = false.obs;
+  var isLoadingEmployees = false.obs;
   var errorMessage = ''.obs;
 
-  var selectedUserId = ''.obs;
+  // FIXED: filter pakai employee_id, bukan user_id
+  var selectedEmployeeId = ''.obs;
 
   String _baseUrl = '';
 
@@ -34,21 +36,26 @@ class AdminAbsensiController extends GetxController {
     return _baseUrl;
   }
 
-  Future<void> fetchAllUsers() async {
+  // =========================================================================
+  // FETCH EMPLOYEES (dropdown filter)
+  // FIXED: endpoint /admin/users/all → /admin/employees
+  // =========================================================================
+
+  Future<void> fetchAllEmployees() async {
     if (auth.token.isEmpty) {
       errorMessage.value = 'Token tidak ditemukan';
       return;
     }
 
-    isLoadingUsers.value = true;
+    isLoadingEmployees.value = true;
 
     try {
       final baseUrl = await _resolvedBaseUrl;
-      print('Fetching all users');
 
+      // FIXED: endpoint lama /admin/users/all → /admin/employees
       final response = await http
           .get(
-            Uri.parse('$baseUrl/admin/users/all'),
+            Uri.parse('$baseUrl/admin/employees'),
             headers: {
               'Accept': 'application/json',
               'Authorization': 'Bearer ${auth.token}',
@@ -56,15 +63,12 @@ class AdminAbsensiController extends GetxController {
           )
           .timeout(const Duration(seconds: 10));
 
-      print('Response users: ${response.statusCode}');
-
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         if (data['data'] is List) {
-          semuaUsers.value = List<Map<String, dynamic>>.from(data['data']);
-          print('Users: ${semuaUsers.length} data');
+          semuaEmployees.value = List<Map<String, dynamic>>.from(data['data']);
         } else {
-          semuaUsers.value = [];
+          semuaEmployees.value = [];
         }
       } else if (response.statusCode == 401) {
         errorMessage.value = 'Sesi habis, silahkan login ulang';
@@ -77,18 +81,26 @@ class AdminAbsensiController extends GetxController {
         );
         Future.delayed(const Duration(seconds: 2), () => auth.logout());
       } else {
-        print('Error fetch users: ${response.statusCode}');
-        errorMessage.value = 'Gagal memuat data users';
+        errorMessage.value = 'Gagal memuat data karyawan';
       }
     } catch (e) {
-      print('Error fetch users: $e');
-      errorMessage.value = 'Gagal memuat data users';
+      errorMessage.value = 'Gagal memuat data karyawan';
     } finally {
-      isLoadingUsers.value = false;
+      isLoadingEmployees.value = false;
     }
   }
 
-  Future<void> fetchAllAbsensi() async {
+  // =========================================================================
+  // FETCH ABSENSI
+  // FIXED: filter pakai employee_id (bukan user_id)
+  // =========================================================================
+
+  Future<void> fetchAllAbsensi({
+    String? tanggal,
+    String? bulan,
+    String? tahun,
+    String? status,
+  }) async {
     if (auth.token.isEmpty) {
       errorMessage.value = 'Token tidak ditemukan';
       return;
@@ -99,19 +111,26 @@ class AdminAbsensiController extends GetxController {
 
     try {
       final baseUrl = await _resolvedBaseUrl;
-      print('Fetching all absensi');
 
-      String url = '$baseUrl/admin/absensi/all';
+      // Build query params
+      final params = <String, String>{};
 
-      if (selectedUserId.value.isNotEmpty) {
-        url = '$url?user_id=${selectedUserId.value}';
+      // FIXED: filter key employee_id bukan user_id
+      if (selectedEmployeeId.value.isNotEmpty) {
+        params['employee_id'] = selectedEmployeeId.value;
       }
+      if (tanggal != null && tanggal.isNotEmpty) params['tanggal'] = tanggal;
+      if (bulan != null && bulan.isNotEmpty) params['bulan'] = bulan;
+      if (tahun != null && tahun.isNotEmpty) params['tahun'] = tahun;
+      if (status != null && status.isNotEmpty) params['status'] = status;
 
-      print('URL: $url');
+      final uri = Uri.parse(
+        '$baseUrl/admin/absensi/all',
+      ).replace(queryParameters: params.isNotEmpty ? params : null);
 
       final response = await http
           .get(
-            Uri.parse(url),
+            uri,
             headers: {
               'Accept': 'application/json',
               'Authorization': 'Bearer ${auth.token}',
@@ -119,14 +138,10 @@ class AdminAbsensiController extends GetxController {
           )
           .timeout(const Duration(seconds: 15));
 
-      print('Response absensi: ${response.statusCode}');
-      print('Response body: ${response.body}');
-
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         if (data['data'] is List) {
           semuaAbsensi.value = List<Map<String, dynamic>>.from(data['data']);
-          print('Absensi: ${semuaAbsensi.length} data');
         } else {
           semuaAbsensi.value = [];
         }
@@ -142,15 +157,17 @@ class AdminAbsensiController extends GetxController {
         Future.delayed(const Duration(seconds: 2), () => auth.logout());
       } else {
         errorMessage.value = 'Error ${response.statusCode}';
-        print('Error fetch absensi: ${response.statusCode}');
       }
     } catch (e) {
-      print('Error fetch absensi: $e');
       errorMessage.value = 'Gagal memuat data absensi';
     } finally {
       isLoading.value = false;
     }
   }
+
+  // =========================================================================
+  // DELETE ABSENSI
+  // =========================================================================
 
   Future<bool> deleteAbsensi(int id) async {
     if (auth.token.isEmpty) {
@@ -159,14 +176,12 @@ class AdminAbsensiController extends GetxController {
         'Token tidak ditemukan',
         backgroundColor: Colors.red,
         colorText: Colors.white,
-        snackPosition: SnackPosition.TOP,
       );
       return false;
     }
 
     try {
       final baseUrl = await _resolvedBaseUrl;
-      print('Deleting absensi ID: $id');
 
       final response = await http
           .delete(
@@ -178,11 +193,9 @@ class AdminAbsensiController extends GetxController {
           )
           .timeout(const Duration(seconds: 10));
 
-      print('Response delete: ${response.statusCode}');
-      print('Response body: ${response.body}');
-
       if (response.statusCode == 200) {
-        print('Absensi berhasil dihapus');
+        // Hapus dari list lokal agar tidak perlu fetch ulang
+        semuaAbsensi.removeWhere((a) => a['id'] == id);
         return true;
       } else if (response.statusCode == 401) {
         Get.snackbar(
@@ -190,7 +203,6 @@ class AdminAbsensiController extends GetxController {
           'Silahkan login ulang',
           backgroundColor: Colors.orange,
           colorText: Colors.white,
-          snackPosition: SnackPosition.TOP,
         );
         Future.delayed(const Duration(seconds: 2), () => auth.logout());
         return false;
@@ -202,54 +214,83 @@ class AdminAbsensiController extends GetxController {
             errorData['message'] ?? 'Gagal menghapus absensi',
             backgroundColor: Colors.red,
             colorText: Colors.white,
-            snackPosition: SnackPosition.TOP,
           );
-        } catch (e) {
+        } catch (_) {
           Get.snackbar(
             'Gagal',
             'Error ${response.statusCode}',
             backgroundColor: Colors.red,
             colorText: Colors.white,
-            snackPosition: SnackPosition.TOP,
           );
         }
         return false;
       }
     } catch (e) {
-      print('Error delete absensi: $e');
       Get.snackbar(
         'Error',
         'Koneksi error: ${e.toString()}',
         backgroundColor: Colors.red,
         colorText: Colors.white,
-        snackPosition: SnackPosition.TOP,
       );
       return false;
     }
   }
 
-  void filterByUser(String userId) {
-    selectedUserId.value = userId;
+  // =========================================================================
+  // FILTER HELPERS
+  // FIXED: pakai employee_id dan field full_name/nickname dari Employee model
+  // =========================================================================
+
+  void filterByEmployee(String employeeId) {
+    selectedEmployeeId.value = employeeId;
     fetchAllAbsensi();
   }
 
   void resetFilter() {
-    selectedUserId.value = '';
+    selectedEmployeeId.value = '';
     fetchAllAbsensi();
   }
 
-  String getUserNameById(int userId) {
+  // FIXED: cari berdasarkan employee id (int), return full_name
+  String getEmployeeNameById(int employeeId) {
     try {
-      final user = semuaUsers.firstWhere(
-        (u) => u['id'] == userId,
-        orElse: () => {'name': 'Unknown User'},
+      final emp = semuaEmployees.firstWhere(
+        (e) => e['id'] == employeeId,
+        orElse: () => {},
       );
-      return user['name'] ?? 'Unknown User';
-    } catch (e) {
-      print('Error get user name: $e');
-      return 'Unknown User';
+      if (emp.isEmpty) return 'Unknown';
+      // FIXED: field full_name dari Employee model, bukan name dari User
+      return emp['full_name'] ?? emp['nickname'] ?? 'Unknown';
+    } catch (_) {
+      return 'Unknown';
     }
   }
+
+  // Helper: ambil nama dari nested employee object di dalam absensi
+  String getEmployeeNameFromAbsensi(Map<String, dynamic> absensi) {
+    try {
+      final emp = absensi['employee'];
+      if (emp == null) return 'Unknown';
+      return emp['full_name'] ?? emp['nickname'] ?? 'Unknown';
+    } catch (_) {
+      return 'Unknown';
+    }
+  }
+
+  // Helper: ambil nama lokasi dari nested pusat_lokasi
+  String getLokasiNameFromAbsensi(Map<String, dynamic> absensi) {
+    try {
+      final lok = absensi['pusat_lokasi'];
+      if (lok == null) return '-';
+      return lok['nama_lokasi'] ?? '-';
+    } catch (_) {
+      return '-';
+    }
+  }
+
+  // =========================================================================
+  // FORMAT WAKTU
+  // =========================================================================
 
   String formatWaktu(String waktuStr) {
     try {
@@ -258,23 +299,17 @@ class AdminAbsensiController extends GetxController {
       if (waktuStr.contains('T')) {
         final parts = waktuStr.split('T');
         String tanggal = parts[0];
-
         final tglParts = tanggal.split('-');
         if (tglParts.length == 3) {
           tanggal = '${tglParts[2]}-${tglParts[1]}-${tglParts[0]}';
         }
-
-        String jam = parts[1];
-        jam = jam.replaceAll(RegExp(r'\..*$'), '');
-        jam = jam.replaceAll(RegExp(r'Z$'), '');
-
+        String jam = parts[1]
+            .replaceAll(RegExp(r'\..*$'), '')
+            .replaceAll(RegExp(r'Z$'), '');
         if (jam.contains(':')) {
           final jamParts = jam.split(':');
-          if (jamParts.length >= 2) {
-            jam = '${jamParts[0]}:${jamParts[1]}';
-          }
+          if (jamParts.length >= 2) jam = '${jamParts[0]}:${jamParts[1]}';
         }
-
         return '$tanggal $jam';
       }
 
@@ -286,65 +321,82 @@ class AdminAbsensiController extends GetxController {
           if (tglParts.length == 3) {
             tanggal = '${tglParts[2]}-${tglParts[1]}-${tglParts[0]}';
           }
-
           String jam = parts[1];
           if (jam.contains(':')) {
             final jamParts = jam.split(':');
-            if (jamParts.length >= 2) {
-              jam = '${jamParts[0]}:${jamParts[1]}';
-            }
+            if (jamParts.length >= 2) jam = '${jamParts[0]}:${jamParts[1]}';
           }
-
           return '$tanggal $jam';
         }
       }
-
       return waktuStr;
-    } catch (e) {
-      print('Error format waktu: $e');
+    } catch (_) {
       return waktuStr;
     }
   }
 
+  // =========================================================================
+  // STATISTICS
+  // =========================================================================
+
+  var statistics = <String, dynamic>{}.obs;
+  var isLoadingStatistics = false.obs;
+
+  Future<void> fetchStatistics() async {
+    if (auth.token.isEmpty) return;
+
+    isLoadingStatistics.value = true;
+    try {
+      final baseUrl = await _resolvedBaseUrl;
+      final response = await http
+          .get(
+            Uri.parse('$baseUrl/admin/absensi/statistics'),
+            headers: {
+              'Accept': 'application/json',
+              'Authorization': 'Bearer ${auth.token}',
+            },
+          )
+          .timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        statistics.value = Map<String, dynamic>.from(data['data'] ?? {});
+      }
+    } catch (e) {
+      // silent fail
+    } finally {
+      isLoadingStatistics.value = false;
+    }
+  }
+
+  // =========================================================================
+  // MISC
+  // =========================================================================
+
   int getUniqueDatesCount() {
     try {
-      Set<String> dates = {};
+      final dates = <String>{};
       for (var item in semuaAbsensi) {
-        if (item['waktu_absen'] != null) {
-          String waktu = item['waktu_absen'].toString();
-          if (waktu.contains('T')) {
-            dates.add(waktu.split('T')[0]);
-          } else if (waktu.contains(' ')) {
-            dates.add(waktu.split(' ')[0]);
-          }
+        final waktu = item['waktu_absen']?.toString() ?? '';
+        if (waktu.contains('T')) {
+          dates.add(waktu.split('T')[0]);
+        } else if (waktu.contains(' ')) {
+          dates.add(waktu.split(' ')[0]);
         }
       }
       return dates.length;
-    } catch (e) {
-      print('Error hitung unique dates: $e');
+    } catch (_) {
       return 0;
     }
   }
 
   void reset() {
     semuaAbsensi.clear();
-    semuaUsers.clear();
+    semuaEmployees.clear();
     errorMessage.value = '';
     isLoading.value = false;
-    isLoadingUsers.value = false;
-    selectedUserId.value = '';
-  }
-
-  void printDebugInfo() {
-    print('=' * 50);
-    print('ADMIN ABSENSI CONTROLLER');
-    print('BaseUrl: $_baseUrl');
-    print('Token: ${auth.token.isNotEmpty ? "Ada" : "Kosong"}');
-    print('Total Users: ${semuaUsers.length}');
-    print('Total Absensi: ${semuaAbsensi.length}');
-    print('Selected User: ${selectedUserId.value}');
-    print('Loading: $isLoading');
-    print('Error: ${errorMessage.value}');
-    print('=' * 50);
+    isLoadingEmployees.value = false;
+    selectedEmployeeId.value = '';
+    statistics.clear();
   }
 }

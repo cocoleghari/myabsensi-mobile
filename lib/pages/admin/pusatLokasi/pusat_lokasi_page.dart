@@ -6,6 +6,7 @@ import '../../../controllers/pusat_lokasi_controller.dart';
 import '../master_drawer.dart';
 import 'widgets/pusat_lokasi_table.dart';
 import 'widgets/pusat_lokasi_search_bar.dart';
+import 'modals/import_export_pusat_lokasi_modal.dart';
 
 class PusatLokasiPage extends StatelessWidget {
   const PusatLokasiPage({super.key});
@@ -16,17 +17,34 @@ class PusatLokasiPage extends StatelessWidget {
     final PusatLokasiController controller = Get.put(PusatLokasiController());
 
     return Scaffold(
+      backgroundColor: const Color(0xFFF5F7FB),
       appBar: AppBar(
         title: const Text(
-          'Pengaturan Pusat Lokasi',
-          style: TextStyle(fontWeight: FontWeight.bold),
+          'Pusat Lokasi',
+          style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18),
         ),
-        backgroundColor: Colors.blue,
-        foregroundColor: Colors.white,
-        elevation: 2,
+        backgroundColor: Colors.white,
+        foregroundColor: Colors.black87,
+        elevation: 0,
+        surfaceTintColor: Colors.transparent,
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(1),
+          child: Container(height: 1, color: Colors.grey.shade100),
+        ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh),
+            icon: Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: Colors.blue.shade50,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(
+                Icons.refresh_rounded,
+                color: Colors.blue,
+                size: 18,
+              ),
+            ),
             onPressed: () {
               controller.fetchPusatLokasi();
               Get.snackbar(
@@ -36,135 +54,105 @@ class PusatLokasiPage extends StatelessWidget {
                 colorText: Colors.white,
                 snackPosition: SnackPosition.TOP,
                 duration: const Duration(seconds: 1),
+                margin: const EdgeInsets.all(12),
+                borderRadius: 12,
               );
             },
             tooltip: 'Refresh',
           ),
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: () {
-              Get.defaultDialog(
-                title: 'Konfirmasi Logout',
-                middleText: 'Yakin ingin logout?',
-                textCancel: 'Batal',
-                textConfirm: 'Logout',
-                confirmTextColor: Colors.white,
-                buttonColor: Colors.red,
-                onConfirm: () {
-                  Get.back();
-                  authController.logout();
-                },
-              );
-            },
-          ),
+          const SizedBox(width: 4),
         ],
       ),
       drawer: const MasterDrawer(currentPage: 'pusat-lokasi'),
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Colors.blue.shade50, Colors.white],
-          ),
-        ),
-        child: SafeArea(
-          child: Column(
-            children: [
-              _buildHeader(controller),
-
-              const PusatLokasiSearchBar(),
-
-              const SizedBox(height: 8),
-
-              Expanded(
-                child: Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 16),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(20),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.blue.withOpacity(0.1),
-                        blurRadius: 10,
-                        offset: const Offset(0, 5),
-                      ),
-                    ],
-                  ),
-                  child: PusatLokasiTable(controller: controller),
-                ),
-              ),
-
-              // Tombol Aksi
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: _buildActionButtons(context, controller),
-              ),
-            ],
-          ),
-        ),
+      body: Column(
+        children: [
+          _buildHeader(controller),
+          const PusatLokasiSearchBar(),
+          const SizedBox(height: 4),
+          Expanded(child: PusatLokasiTable(controller: controller)),
+          _buildActionButtons(context, controller),
+        ],
       ),
     );
   }
 
   Widget _buildHeader(PusatLokasiController controller) {
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.blue.withOpacity(0.1),
-              blurRadius: 10,
-              offset: const Offset(0, 5),
-            ),
-          ],
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Colors.blue.shade600, Colors.blue.shade400],
         ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.blue.shade50,
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.location_on,
-                color: Colors.blue,
-                size: 30,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.blue.withOpacity(0.3),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: const Icon(
+              Icons.location_on_rounded,
+              color: Colors.white,
+              size: 28,
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Obx(
+              () => Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Pengaturan Pusat Lokasi',
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    '${controller.totalItems.value} lokasi terdaftar',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Colors.white.withOpacity(0.85),
+                    ),
+                  ),
+                ],
               ),
             ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Obx(
-                () => Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Pusat Lokasi',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Total: ${controller.totalItems.value} lokasi terdaftar',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey.shade600,
-                      ),
-                    ),
-                  ],
+          ),
+          Obx(
+            () => Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Text(
+                '${controller.totalItems.value}',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 16,
                 ),
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -173,44 +161,83 @@ class PusatLokasiPage extends StatelessWidget {
     BuildContext context,
     PusatLokasiController controller,
   ) {
-    return Row(
-      children: [
-        Expanded(
-          child: OutlinedButton.icon(
-            onPressed: () => controller.fetchPusatLokasi(),
-            icon: const Icon(Icons.refresh),
-            label: const Text('Refresh'),
-            style: OutlinedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 14),
-              backgroundColor: Colors.white,
-              foregroundColor: Colors.blue,
-              side: BorderSide(color: Colors.blue.shade200),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(15),
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.06),
+            blurRadius: 16,
+            offset: const Offset(0, -4),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Obx(() {
+              final isBusy =
+                  controller.isExporting.value ||
+                  controller.isImporting.value ||
+                  controller.isDownloadingTemplate.value;
+              return OutlinedButton.icon(
+                onPressed: isBusy
+                    ? null
+                    : () => ImportExportPusatLokasiModal.show(
+                        context,
+                        controller,
+                      ),
+                icon: isBusy
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.blue,
+                        ),
+                      )
+                    : const Icon(Icons.import_export_rounded, size: 18),
+                label: Text(
+                  isBusy ? 'Memproses...' : 'Import / Export',
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  backgroundColor: Colors.blue.shade50,
+                  foregroundColor: Colors.blue,
+                  side: BorderSide(color: Colors.blue.shade200),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+              );
+            }),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: ElevatedButton.icon(
+              onPressed: () => TambahPusatLokasiModal.show(context, controller),
+              icon: const Icon(Icons.add_location_alt_rounded, size: 18),
+              label: const Text(
+                'Tambah Lokasi',
+                style: TextStyle(fontWeight: FontWeight.w600),
+              ),
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                backgroundColor: Colors.blue,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                elevation: 0,
+                shadowColor: Colors.transparent,
               ),
             ),
           ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: ElevatedButton.icon(
-            onPressed: () {
-              TambahPusatLokasiModal.show(context, controller);
-            },
-            icon: const Icon(Icons.add_location),
-            label: const Text('Tambah Lokasi'),
-            style: ElevatedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 14),
-              backgroundColor: Colors.blue,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(15),
-              ),
-              elevation: 3,
-            ),
-          ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }

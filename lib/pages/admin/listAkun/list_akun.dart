@@ -8,18 +8,32 @@ import 'package:myabsensi_mobile/pages/admin/listAkun/widget/akun_table_widget.d
 import 'package:myabsensi_mobile/pages/admin/master_drawer.dart';
 import 'package:get/get.dart';
 
-class ListAkunPage extends GetView<AuthController> {
+class ListAkunPage extends StatefulWidget {
   const ListAkunPage({super.key});
 
   @override
+  State<ListAkunPage> createState() => _ListAkunPageState();
+}
+
+class _ListAkunPageState extends State<ListAkunPage> {
+  late AuthController controller;
+  late UserController userController;
+
+  @override
+  void initState() {
+    super.initState();
+    controller = Get.find<AuthController>();
+    userController = Get.find<UserController>();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    // MediaQuery sekarang reaktif karena ada di StatefulWidget
+    final keyboardVisible = MediaQuery.of(context).viewInsets.bottom > 0;
     final UserController userController = Get.find<UserController>();
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      userController.fetchUsers();
-    });
-
     return Scaffold(
+      resizeToAvoidBottomInset: true,
       appBar: AppBar(
         title: const Text(
           'List Akun',
@@ -49,8 +63,49 @@ class ListAkunPage extends GetView<AuthController> {
         ],
       ),
       drawer: const MasterDrawer(currentPage: 'admin'),
+
+      // ✅ Tombol dipindah ke bottomNavigationBar
+      // Otomatis naik saat keyboard muncul
+      bottomNavigationBar: Obx(() {
+        if (userController.isLoading.value && userController.users.isEmpty) {
+          return const SizedBox.shrink();
+        }
+        return Container(
+          padding: EdgeInsets.only(
+            left: 16,
+            right: 16,
+            top: 12,
+            bottom: MediaQuery.of(context).viewInsets.bottom > 0
+                ? 8
+                : MediaQuery.of(context).padding.bottom + 12,
+          ),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.blue.withOpacity(0.08),
+                blurRadius: 10,
+                offset: const Offset(0, -3),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              AkunActionButtons(
+                userController: userController,
+                onTambahUser: () =>
+                    _showTambahUserModal(context, userController),
+              ),
+              const SizedBox(height: 8),
+              const AkunInfoCard(),
+            ],
+          ),
+        );
+      }),
+
       body: Obx(() {
-        if (userController.isLoading.value) {
+        if (userController.isLoading.value && userController.users.isEmpty) {
           return const Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -63,14 +118,10 @@ class ListAkunPage extends GetView<AuthController> {
           );
         }
 
-        // Hitung jumlah admin dan user
-        final int totalUsers = userController.users.length;
-        final int totalAdmins = userController.users
-            .where((u) => u.role == 'admin')
-            .length;
-        final int totalRegularUsers = userController.users
-            .where((u) => u.role == 'user')
-            .length;
+        final users = userController.users;
+
+        // ✅ Deteksi keyboard aktif
+        final keyboardVisible = MediaQuery.of(context).viewInsets.bottom > 0;
 
         return Container(
           decoration: BoxDecoration(
@@ -80,52 +131,43 @@ class ListAkunPage extends GetView<AuthController> {
               colors: [Colors.blue.shade50, Colors.white],
             ),
           ),
-          child: SafeArea(
-            child: Column(
-              children: [
-                // Header dengan statistik
+          child: Column(
+            children: [
+              // ✅ Header hilang saat keyboard muncul
+              if (!keyboardVisible)
                 AkunHeaderWidget(
-                  totalUsers: totalUsers,
-                  totalAdmins: totalAdmins,
-                  totalRegularUsers: totalRegularUsers,
+                  totalUsers: users.length,
+                  totalSuperAdmin: users
+                      .where((u) => u.role == 'superadmin')
+                      .length,
+                  totalAdmin: users.where((u) => u.role == 'admin').length,
+                  totalHrd: users.where((u) => u.role == 'hrd').length,
+                  totalManager: users.where((u) => u.role == 'manager').length,
+                  totalEmployee: users
+                      .where((u) => u.role == 'employee')
+                      .length,
                 ),
 
-                // Tabel Data User
-                Expanded(
-                  child: Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 16),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(20),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.blue.withOpacity(0.1),
-                          blurRadius: 10,
-                          offset: const Offset(0, 5),
-                        ),
-                      ],
-                    ),
-                    child: AkunTableWidget(userController: userController),
-                  ),
-                ),
-
-                // Tombol Aksi dan Info Card
-                Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    children: [
-                      AkunActionButtons(
-                        userController: userController,
-                        onTambahUser: () =>
-                            _showTambahUserModal(context, userController),
+              Expanded(
+                child: Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.blue.withOpacity(0.1),
+                        blurRadius: 10,
+                        offset: const Offset(0, 5),
                       ),
-                      const SizedBox(height: 10),
-                      const AkunInfoCard(),
                     ],
                   ),
+                  child: AkunTableWidget(userController: userController),
                 ),
-              ],
-            ),
+              ),
+
+              const SizedBox(height: 8),
+            ],
           ),
         );
       }),

@@ -96,7 +96,7 @@ class DetailLokasiUserModal {
 
             const Divider(height: 1),
 
-            // LIST LOKASI (TANPA SEARCH, TANPA MAP)
+            // LIST LOKASI
             Expanded(
               child: ListView.builder(
                 padding: const EdgeInsets.all(16),
@@ -125,12 +125,16 @@ class DetailLokasiUserModal {
                         Container(
                           padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
-                            color: Colors.blue[50],
+                            color: lokasi.isActive
+                                ? Colors.blue[50]
+                                : Colors.grey[100],
                             shape: BoxShape.circle,
                           ),
                           child: Icon(
                             Icons.location_on,
-                            color: Colors.blue[600],
+                            color: lokasi.isActive
+                                ? Colors.blue[600]
+                                : Colors.grey[400],
                             size: 18,
                           ),
                         ),
@@ -141,19 +145,51 @@ class DetailLokasiUserModal {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      lokasi.namaLokasi,
+                                      style: const TextStyle(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                  if (!lokasi.isActive)
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 6,
+                                        vertical: 2,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: Colors.grey[200],
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      child: Text(
+                                        'Nonaktif',
+                                        style: TextStyle(
+                                          fontSize: 10,
+                                          color: Colors.grey[600],
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                              const SizedBox(height: 4),
                               Text(
-                                lokasi.lokasi,
-                                style: const TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.bold,
+                                lokasi.titikKordinat,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey[600],
                                 ),
                               ),
                               const SizedBox(height: 4),
                               Text(
-                                lokasi.koordinat,
+                                'Radius: ${lokasi.radiusMeter} m',
                                 style: TextStyle(
                                   fontSize: 12,
-                                  color: Colors.grey[600],
+                                  color: Colors.grey[500],
                                 ),
                               ),
                             ],

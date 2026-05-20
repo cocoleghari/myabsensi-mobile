@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:myabsensi_mobile/pages/user/riwayatAbsensiPage/utils/riwayat_formatter.dart';
-import 'package:myabsensi_mobile/utils/formatter_util.dart';
 import 'package:get/get.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:myabsensi_mobile/controllers/app_config.dart';
 
 class RiwayatDetailDialog {
-  static const String baseUrl = 'http://192.168.0.103:8000/api';
-
   static void show({
     required BuildContext context,
     required Map<String, dynamic>? dataMasuk,
@@ -29,10 +27,7 @@ class RiwayatDetailDialog {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // ── Header biru ──
                 _buildHeader(no, tanggal),
-
-                // ── Tab + konten ──
                 DefaultTabController(
                   length: 2,
                   child: Column(
@@ -45,7 +40,7 @@ class RiwayatDetailDialog {
                       ),
                       const SizedBox(height: 12),
                       SizedBox(
-                        height: 420,
+                        height: 460,
                         child: TabBarView(
                           children: [
                             dataMasuk != null
@@ -79,8 +74,6 @@ class RiwayatDetailDialog {
     );
   }
 
-  // ── HEADER ──────────────────────────────────────────────────────────────
-
   static Widget _buildHeader(int no, String tanggal) {
     return Container(
       width: double.infinity,
@@ -94,7 +87,6 @@ class RiwayatDetailDialog {
       padding: const EdgeInsets.fromLTRB(20, 22, 16, 22),
       child: Stack(
         children: [
-          // Decorative circle
           Positioned(
             right: -16,
             top: -16,
@@ -178,8 +170,6 @@ class RiwayatDetailDialog {
     );
   }
 
-  // ── TAB BAR ─────────────────────────────────────────────────────────────
-
   static Widget _buildTabBar() {
     return Container(
       height: 44,
@@ -219,8 +209,6 @@ class RiwayatDetailDialog {
     );
   }
 
-  // ── CLOSE BUTTON ────────────────────────────────────────────────────────
-
   static Widget _buildCloseButton() {
     return GestureDetector(
       onTap: () => Get.back(),
@@ -253,22 +241,37 @@ class RiwayatDetailDialog {
   }
 }
 
-// ── DETAIL CONTENT ──────────────────────────────────────────────────────────
+// ── DETAIL CONTENT ───────────────────────────────────────────────────────────
 
-class _DetailContent extends StatelessWidget {
+class _DetailContent extends StatefulWidget {
   final Map<String, dynamic> item;
   final String tipe;
 
   const _DetailContent({required this.item, required this.tipe});
 
   @override
+  State<_DetailContent> createState() => _DetailContentState();
+}
+
+class _DetailContentState extends State<_DetailContent> {
+  String _baseUrl = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadBaseUrl();
+  }
+
+  Future<void> _loadBaseUrl() async {
+    final url = await AppConfig.getBaseUrl();
+    if (mounted) setState(() => _baseUrl = url);
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final data = _parseData(item);
-    final bool isMasuk = tipe == 'masuk';
+    final data = _parseData(widget.item);
+    final bool isMasuk = widget.tipe == 'masuk';
     final Color themeColor = isMasuk
-        ? const Color(0xFF1565C0)
-        : const Color(0xFFE65100);
-    final Color themeBg = isMasuk
         ? const Color(0xFF1565C0)
         : const Color(0xFFE65100);
 
@@ -278,42 +281,37 @@ class _DetailContent extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // ── Waktu card ──
-          _buildWaktuCard(themeBg, data.waktu, isMasuk),
-          const SizedBox(height: 14),
+          _buildWaktuCard(themeColor, data.waktu, isMasuk),
+          const SizedBox(height: 12),
 
-          // ── Info card ──
+          // ── Status card (terlambat / lembur / tepat waktu) ──
+          if (data.status.isNotEmpty) ...[
+            _buildStatusCard(data, isMasuk),
+            const SizedBox(height: 12),
+          ],
+
+          // ── Shift & Lokasi ──
           _buildInfoCard(themeColor, data),
-          const SizedBox(height: 14),
+          const SizedBox(height: 12),
 
-          // ── Peta lokasi ──
-          if (data.lokasiLatLng != null) ...[
-            _sectionLabel('Lokasi Kantor'),
+          // ── Peta posisi user ──
+          if (data.kamuLatLng != null) ...[
+            _sectionLabel('Posisi Absen'),
             const SizedBox(height: 8),
             _buildMapPreview(
-              latLng: data.lokasiLatLng!,
+              latLng: data.kamuLatLng!,
               markerColor: isMasuk
                   ? BitmapDescriptor.hueBlue
                   : BitmapDescriptor.hueOrange,
             ),
-            const SizedBox(height: 14),
-          ],
-
-          // ── Peta posisi kamu ──
-          if (data.kamuLatLng != null) ...[
-            _sectionLabel('Posisi Kamu'),
-            const SizedBox(height: 8),
-            _buildMapPreview(
-              latLng: data.kamuLatLng!,
-              markerColor: BitmapDescriptor.hueGreen,
-            ),
-            const SizedBox(height: 14),
+            const SizedBox(height: 12),
           ],
 
           // ── Foto bukti ──
-          if (data.fotoWajah.isNotEmpty) ...[
+          if (data.fotoAbsenPath.isNotEmpty && _baseUrl.isNotEmpty) ...[
             _sectionLabel('Foto Bukti'),
             const SizedBox(height: 8),
-            _buildFotoCard(data.fotoWajah),
+            _buildFotoCard(data.fotoAbsenPath),
             const SizedBox(height: 8),
           ],
         ],
@@ -322,19 +320,18 @@ class _DetailContent extends StatelessWidget {
   }
 
   Widget _sectionLabel(String label) {
-    return Padding(
-      padding: const EdgeInsets.only(left: 2),
-      child: Text(
-        label,
-        style: const TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.w700,
-          color: Color(0xFF8A94A6),
-          letterSpacing: 0.6,
-        ),
+    return Text(
+      label,
+      style: const TextStyle(
+        fontSize: 11,
+        fontWeight: FontWeight.w700,
+        color: Color(0xFF8A94A6),
+        letterSpacing: 0.6,
       ),
     );
   }
+
+  // ── Waktu card ─────────────────────────────────────────────────────────────
 
   Widget _buildWaktuCard(Color themeColor, String waktu, bool isMasuk) {
     return Container(
@@ -389,7 +386,146 @@ class _DetailContent extends StatelessWidget {
     );
   }
 
+  // ── Status card ────────────────────────────────────────────────────────────
+
+  Widget _buildStatusCard(_ParsedData data, bool isMasuk) {
+    Color statusColor;
+    IconData statusIcon;
+    String statusLabel;
+
+    switch (data.status) {
+      case 'terlambat':
+        statusColor = const Color(0xFFC62828);
+        statusIcon = Icons.timer_off_rounded;
+        statusLabel = 'Terlambat ${data.menitTerlambat} menit';
+        break;
+      case 'lembur':
+        statusColor = const Color(0xFF6A1B9A);
+        statusIcon = Icons.more_time_rounded;
+        statusLabel = 'Lembur ${data.menitLembur} menit';
+        break;
+      default:
+        statusColor = const Color(0xFF2E7D32);
+        statusIcon = Icons.check_circle_rounded;
+        statusLabel = 'Tepat Waktu';
+    }
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: statusColor.withOpacity(0.07),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: statusColor.withOpacity(0.2), width: 1),
+      ),
+      child: Row(
+        children: [
+          Icon(statusIcon, color: statusColor, size: 18),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              statusLabel,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: statusColor,
+              ),
+            ),
+          ),
+          // Confidence score
+          if (data.confidenceScore > 0)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: const Color(0xFF2E7D32).withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(
+                    Icons.face_rounded,
+                    size: 13,
+                    color: Color(0xFF2E7D32),
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    '${(data.confidenceScore * 100).toStringAsFixed(0)}%',
+                    style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF2E7D32),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  // ── Info card ──────────────────────────────────────────────────────────────
+
   Widget _buildInfoCard(Color themeColor, _ParsedData data) {
+    final List<_InfoRowData> rows = [];
+
+    // Shift
+    if (data.namaShift.isNotEmpty) {
+      rows.add(
+        _InfoRowData(
+          icon: Icons.schedule_rounded,
+          label: 'Shift',
+          value: data.namaShift,
+        ),
+      );
+    }
+
+    // Lokasi kantor (dari pusat_lokasi)
+    rows.add(
+      _InfoRowData(
+        icon: Icons.location_on_outlined,
+        label: 'Lokasi Kantor',
+        value: data.namaLokasi.isNotEmpty ? data.namaLokasi : '-',
+      ),
+    );
+
+    // Jarak ke kantor
+    if (data.jarakMeter > 0) {
+      rows.add(
+        _InfoRowData(
+          icon: Icons.social_distance_rounded,
+          label: 'Jarak ke Kantor',
+          value: data.jarakMeter >= 1000
+              ? '${(data.jarakMeter / 1000).toStringAsFixed(2)} km'
+              : '${data.jarakMeter.toStringAsFixed(0)} m',
+        ),
+      );
+    }
+
+    // Koordinat user
+    rows.add(
+      _InfoRowData(
+        icon: Icons.my_location_rounded,
+        label: 'Koordinat Absen',
+        value: data.koordinatKamu.isNotEmpty ? data.koordinatKamu : '-',
+        valueColor: data.koordinatKamu.isNotEmpty
+            ? const Color(0xFF2E7D32)
+            : const Color(0xFF8A94A6),
+      ),
+    );
+
+    // Catatan (jika ada)
+    if (data.catatan.isNotEmpty) {
+      rows.add(
+        _InfoRowData(
+          icon: Icons.notes_rounded,
+          label: 'Catatan',
+          value: data.catatan,
+        ),
+      );
+    }
+
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -403,36 +539,17 @@ class _DetailContent extends StatelessWidget {
         ],
       ),
       child: Column(
-        children: [
-          _buildInfoRow(
-            icon: Icons.location_on_outlined,
-            label: 'Lokasi',
-            value: data.lokasi,
+        children: List.generate(rows.length, (i) {
+          final row = rows[i];
+          return _buildInfoRow(
+            icon: row.icon,
+            label: row.label,
+            value: row.value,
             color: themeColor,
-            isLast: false,
-          ),
-          _buildInfoRow(
-            icon: Icons.pin_drop_outlined,
-            label: 'Koordinat Lokasi',
-            value: data.koordinatLokasi,
-            color: themeColor,
-            isLast: false,
-          ),
-          _buildInfoRow(
-            icon: Icons.my_location_rounded,
-            label: 'Koordinat Kamu',
-            value: data.koordinatKamu.isNotEmpty
-                ? data.koordinatKamu
-                : 'Tidak tersedia',
-            color: data.koordinatKamu.isNotEmpty
-                ? const Color(0xFF2E7D32)
-                : const Color(0xFF8A94A6),
-            valueColor: data.koordinatKamu.isNotEmpty
-                ? const Color(0xFF2E7D32)
-                : const Color(0xFF8A94A6),
-            isLast: true,
-          ),
-        ],
+            valueColor: row.valueColor,
+            isLast: i == rows.length - 1,
+          );
+        }),
       ),
     );
   }
@@ -500,6 +617,8 @@ class _DetailContent extends StatelessWidget {
     );
   }
 
+  // ── Map preview ────────────────────────────────────────────────────────────
+
   Widget _buildMapPreview({
     required LatLng latLng,
     required double markerColor,
@@ -519,31 +638,37 @@ class _DetailContent extends StatelessWidget {
       child: ClipRRect(
         borderRadius: BorderRadius.circular(16),
         child: GoogleMap(
-          initialCameraPosition: CameraPosition(target: latLng, zoom: 15),
+          initialCameraPosition: CameraPosition(target: latLng, zoom: 16),
           markers: {
             Marker(
               markerId: MarkerId(
-                'preview_${DateTime.now().millisecondsSinceEpoch}',
+                'preview_${latLng.latitude}_${latLng.longitude}',
               ),
               position: latLng,
               icon: BitmapDescriptor.defaultMarkerWithHue(markerColor),
             ),
           },
-          zoomControlsEnabled: true,
+          zoomControlsEnabled: false,
           myLocationButtonEnabled: false,
-          compassEnabled: true,
+          compassEnabled: false,
           mapToolbarEnabled: false,
+          scrollGesturesEnabled: false,
+          zoomGesturesEnabled: false,
         ),
       ),
     );
   }
 
-  Widget _buildFotoCard(String fotoWajah) {
-    final imageUrl = RiwayatFormatter.getFullImageUrl(
-      fotoWajah,
-      RiwayatDetailDialog.baseUrl,
-    );
-    final heroTag = 'foto_bukti_$fotoWajah';
+  // ── Foto bukti ─────────────────────────────────────────────────────────────
+
+  Widget _buildFotoCard(String fotoAbsenPath) {
+    // foto_absen_path dari backend hanya nama file: "masuk_nama_1234567890.jpg"
+    // URL lengkap: {baseUrl}/storage/foto_absensi/{namaFile}
+    // Tapi baseUrl di sini adalah base API, storage ada di root laravel
+    // Contoh: http://192.168.0.103:8000/storage/foto_absensi/masuk_budi_1234.jpg
+    final storageBase = _baseUrl.replaceFirst('/api', '');
+    final imageUrl = '$storageBase/storage/foto_absensi/$fotoAbsenPath';
+    final heroTag = 'foto_bukti_$fotoAbsenPath';
 
     return GestureDetector(
       onTap: () => _showFullscreenPhoto(imageUrl, heroTag),
@@ -613,7 +738,6 @@ class _DetailContent extends StatelessWidget {
                   },
                 ),
               ),
-              // Tap hint overlay
               Positioned(
                 bottom: 8,
                 right: 8,
@@ -662,78 +786,81 @@ class _DetailContent extends StatelessWidget {
     );
   }
 
+  // ── Parse data dari field Absensi model ────────────────────────────────────
+  //
+  // Field yang tersedia dari backend (getRiwayatAbsensi):
+  //   id, employee_id, pusat_lokasi_id, shift_id,
+  //   tanggal_absen (date),  tipe_absen,  waktu_absen (datetime UTC),
+  //   latitude (double),     longitude (double),
+  //   jarak_meter (double),  foto_absen_path (string: nama file saja),
+  //   confidence_score,      wajah_cocok,   status,
+  //   menit_terlambat,       menit_lembur,  catatan,
+  //   pusat_lokasi: { id, nama_lokasi },
+  //   shift: { id, nama, kode }
+
   _ParsedData _parseData(Map<String, dynamic> item) {
-    String lokasi = '-';
-    String koordinatLokasi = '-';
-    String koordinatKamu = '-';
+    // Tambah ini di baris pertama
+    debugPrint('=== FULL ITEM DATA ===');
+    debugPrint(item.toString());
+    debugPrint('catatan value: ${item['catatan']}');
+    debugPrint('catatan type: ${item['catatan'].runtimeType}');
+    // Waktu absen — datetime UTC dari backend
     String waktu = '-';
-    String fotoWajah = '';
-    LatLng? lokasiLatLng;
+    try {
+      final raw = item['waktu_absen']?.toString() ?? '';
+      if (raw.isNotEmpty) waktu = _formatWaktuIndonesia(raw);
+    } catch (_) {}
+
+    // Lokasi dari relasi pusat_lokasi
+    final String namaLokasi =
+        item['pusat_lokasi']?['nama_lokasi']?.toString() ?? '';
+
+    // Shift dari relasi shift
+    final String namaShift = item['shift']?['nama']?.toString() ?? '';
+
+    // Koordinat user saat absen
+    final double? lat = (item['latitude'] as num?)?.toDouble();
+    final double? lng = (item['longitude'] as num?)?.toDouble();
+    String koordinatKamu = '';
     LatLng? kamuLatLng;
-
-    try {
-      if (item['lokasi'] != null) {
-        if (item['lokasi'] is Map) {
-          lokasi = item['lokasi']['lokasi']?.toString() ?? '-';
-          if (item['lokasi']['koordinat'] != null) {
-            koordinatLokasi = item['lokasi']['koordinat'].toString();
-          }
-        } else {
-          lokasi = item['lokasi'].toString();
-        }
-      }
-    } catch (_) {}
-
-    try {
-      if (item['titik_koordinat_lokasi'] != null) {
-        koordinatLokasi = item['titik_koordinat_lokasi'].toString();
-      }
-      if (koordinatLokasi != '-') {
-        final parts = koordinatLokasi.split(',');
-        if (parts.length == 2) {
-          final lat = double.tryParse(parts[0].trim());
-          final lng = double.tryParse(parts[1].trim());
-          if (lat != null && lng != null) lokasiLatLng = LatLng(lat, lng);
-        }
-      }
-    } catch (_) {}
-
-    try {
-      if (item['titik_koordinat_kamu'] != null &&
-          item['titik_koordinat_kamu'].toString().isNotEmpty) {
-        koordinatKamu = item['titik_koordinat_kamu'].toString();
-        final parts = koordinatKamu.split(',');
-        if (parts.length == 2) {
-          final lat = double.tryParse(parts[0].trim());
-          final lng = double.tryParse(parts[1].trim());
-          if (lat != null && lng != null) kamuLatLng = LatLng(lat, lng);
-        }
-      }
-    } catch (_) {}
-
-    try {
-      if (item['foto_wajah'] != null &&
-          item['foto_wajah'].toString().isNotEmpty) {
-        fotoWajah = item['foto_wajah'].toString();
-      }
-    } catch (_) {}
-
-    try {
-      if (item['waktu_absen'] != null) {
-        waktu = _formatWaktuIndonesia(item['waktu_absen'].toString());
-      }
-    } catch (_) {
-      waktu = '-';
+    if (lat != null && lng != null && lat != 0 && lng != 0) {
+      koordinatKamu = '${lat.toStringAsFixed(6)}, ${lng.toStringAsFixed(6)}';
+      kamuLatLng = LatLng(lat, lng);
     }
 
+    // Jarak meter
+    final double jarakMeter = (item['jarak_meter'] as num?)?.toDouble() ?? 0.0;
+
+    // Foto — hanya nama file, URL dibangun di _buildFotoCard
+    final String fotoAbsenPath = item['foto_absen_path']?.toString() ?? '';
+
+    // Confidence score (0.0 – 1.0)
+    final double confidenceScore =
+        (item['confidence_score'] as num?)?.toDouble() ?? 0.0;
+
+    // Status: tepat_waktu | terlambat | lembur
+    final String status = item['status']?.toString() ?? 'tepat_waktu';
+
+    // Menit terlambat / lembur
+    final int menitTerlambat = (item['menit_terlambat'] as num?)?.toInt() ?? 0;
+    final int menitLembur = (item['menit_lembur'] as num?)?.toInt() ?? 0;
+
+    // Catatan
+    final String catatan = item['catatan']?.toString() ?? '';
+
     return _ParsedData(
-      lokasi: lokasi,
-      koordinatLokasi: koordinatLokasi,
-      koordinatKamu: koordinatKamu,
       waktu: waktu,
-      fotoWajah: fotoWajah,
-      lokasiLatLng: lokasiLatLng,
+      namaLokasi: namaLokasi,
+      namaShift: namaShift,
+      koordinatKamu: koordinatKamu,
       kamuLatLng: kamuLatLng,
+      jarakMeter: jarakMeter,
+      fotoAbsenPath: fotoAbsenPath,
+      confidenceScore: confidenceScore,
+      status: status,
+      menitTerlambat: menitTerlambat,
+      menitLembur: menitLembur,
+      catatan: catatan,
     );
   }
 }
@@ -779,13 +906,60 @@ class _EmptyContent extends StatelessWidget {
   }
 }
 
+// ── DATA MODELS ───────────────────────────────────────────────────────────────
+
+class _InfoRowData {
+  final IconData icon;
+  final String label;
+  final String value;
+  final Color? valueColor;
+
+  const _InfoRowData({
+    required this.icon,
+    required this.label,
+    required this.value,
+    this.valueColor,
+  });
+}
+
+class _ParsedData {
+  final String waktu;
+  final String namaLokasi;
+  final String namaShift;
+  final String koordinatKamu;
+  final LatLng? kamuLatLng;
+  final double jarakMeter;
+  final String fotoAbsenPath;
+  final double confidenceScore;
+  final String status;
+  final int menitTerlambat;
+  final int menitLembur;
+  final String catatan;
+
+  const _ParsedData({
+    required this.waktu,
+    required this.namaLokasi,
+    required this.namaShift,
+    required this.koordinatKamu,
+    required this.kamuLatLng,
+    required this.jarakMeter,
+    required this.fotoAbsenPath,
+    required this.confidenceScore,
+    required this.status,
+    required this.menitTerlambat,
+    required this.menitLembur,
+    required this.catatan,
+  });
+}
+
 // ── HELPERS ───────────────────────────────────────────────────────────────────
 
-/// Format waktu ke Indonesia lengkap: "Senin, 07 April 2025 • 08:30 WIB"
+/// Format datetime UTC ke: "Senin, 07 April 2025 • 08:30 WIB"
 String _formatWaktuIndonesia(String waktuStr) {
   try {
     final dt = DateTime.parse(waktuStr);
-    final wib = dt.toUtc().add(const Duration(hours: 7));
+    final utc = dt.isUtc ? dt : dt.toUtc();
+    final wib = utc.add(const Duration(hours: 7));
 
     const hariList = [
       'Senin',
@@ -820,33 +994,11 @@ String _formatWaktuIndonesia(String waktuStr) {
 
     return '$hari, $tgl $bulan $tahun • $jam:$menit WIB';
   } catch (_) {
-    return FormatterUtil.formatWaktuLengkap(waktuStr);
+    return waktuStr;
   }
 }
 
-// ── DATA MODEL ────────────────────────────────────────────────────────────────
-
-class _ParsedData {
-  final String lokasi;
-  final String koordinatLokasi;
-  final String koordinatKamu;
-  final String waktu;
-  final String fotoWajah;
-  final LatLng? lokasiLatLng;
-  final LatLng? kamuLatLng;
-
-  _ParsedData({
-    required this.lokasi,
-    required this.koordinatLokasi,
-    required this.koordinatKamu,
-    required this.waktu,
-    required this.fotoWajah,
-    this.lokasiLatLng,
-    this.kamuLatLng,
-  });
-}
-
-// ── FULLSCREEN PHOTO PAGE ────────────────────────────────────────────────────
+// ── FULLSCREEN PHOTO PAGE ─────────────────────────────────────────────────────
 
 class _FullscreenPhotoPage extends StatefulWidget {
   final String imageUrl;
@@ -869,13 +1021,9 @@ class _FullscreenPhotoPageState extends State<_FullscreenPhotoPage> {
     super.dispose();
   }
 
-  void _resetZoom() {
-    _transformController.value = Matrix4.identity();
-  }
+  void _resetZoom() => _transformController.value = Matrix4.identity();
 
-  void _toggleControls() {
-    setState(() => _showControls = !_showControls);
-  }
+  void _toggleControls() => setState(() => _showControls = !_showControls);
 
   @override
   Widget build(BuildContext context) {
@@ -886,7 +1034,6 @@ class _FullscreenPhotoPageState extends State<_FullscreenPhotoPage> {
         child: Stack(
           fit: StackFit.expand,
           children: [
-            // ── Foto interaktif (pinch to zoom) ──
             Center(
               child: InteractiveViewer(
                 transformationController: _transformController,
@@ -897,35 +1044,33 @@ class _FullscreenPhotoPageState extends State<_FullscreenPhotoPage> {
                   child: Image.network(
                     widget.imageUrl,
                     fit: BoxFit.contain,
-                    errorBuilder: (context, error, stackTrace) {
-                      return const Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.broken_image_outlined,
-                              size: 48,
-                              color: Colors.white38,
+                    errorBuilder: (_, __, ___) => const Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.broken_image_outlined,
+                            size: 48,
+                            color: Colors.white38,
+                          ),
+                          SizedBox(height: 12),
+                          Text(
+                            'Gagal memuat foto',
+                            style: TextStyle(
+                              color: Colors.white54,
+                              fontSize: 14,
                             ),
-                            SizedBox(height: 12),
-                            Text(
-                              'Gagal memuat foto',
-                              style: TextStyle(
-                                color: Colors.white54,
-                                fontSize: 14,
-                              ),
-                            ),
-                          ],
-                        ),
-                      );
-                    },
-                    loadingBuilder: (context, child, loadingProgress) {
-                      if (loadingProgress == null) return child;
+                          ),
+                        ],
+                      ),
+                    ),
+                    loadingBuilder: (_, child, progress) {
+                      if (progress == null) return child;
                       return Center(
                         child: CircularProgressIndicator(
-                          value: loadingProgress.expectedTotalBytes != null
-                              ? loadingProgress.cumulativeBytesLoaded /
-                                    loadingProgress.expectedTotalBytes!
+                          value: progress.expectedTotalBytes != null
+                              ? progress.cumulativeBytesLoaded /
+                                    progress.expectedTotalBytes!
                               : null,
                           color: Colors.white,
                           strokeWidth: 2,
@@ -937,7 +1082,7 @@ class _FullscreenPhotoPageState extends State<_FullscreenPhotoPage> {
               ),
             ),
 
-            // ── Top bar ──
+            // Top bar
             AnimatedOpacity(
               opacity: _showControls ? 1.0 : 0.0,
               duration: const Duration(milliseconds: 200),
@@ -949,7 +1094,6 @@ class _FullscreenPhotoPageState extends State<_FullscreenPhotoPage> {
                   ),
                   child: Row(
                     children: [
-                      // Tombol kembali
                       GestureDetector(
                         onTap: () => Get.back(),
                         child: Container(
@@ -981,7 +1125,6 @@ class _FullscreenPhotoPageState extends State<_FullscreenPhotoPage> {
                           ),
                         ),
                       ),
-                      // Tombol reset zoom
                       GestureDetector(
                         onTap: _resetZoom,
                         child: Container(
@@ -1008,7 +1151,7 @@ class _FullscreenPhotoPageState extends State<_FullscreenPhotoPage> {
               ),
             ),
 
-            // ── Hint zoom (muncul sebentar di bawah) ──
+            // Bottom hint
             AnimatedOpacity(
               opacity: _showControls ? 1.0 : 0.0,
               duration: const Duration(milliseconds: 200),

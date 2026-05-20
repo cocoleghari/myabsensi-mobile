@@ -4,8 +4,13 @@ import '../../../../controllers/user_lokasi_controller.dart';
 
 class HasilAbsensiPage extends StatefulWidget {
   final String tipe;
+  final bool isOffline;
 
-  const HasilAbsensiPage({super.key, required this.tipe});
+  const HasilAbsensiPage({
+    super.key,
+    required this.tipe,
+    this.isOffline = false,
+  });
 
   @override
   State<HasilAbsensiPage> createState() => _HasilAbsensiPageState();
@@ -226,8 +231,8 @@ class _HasilAbsensiPageState extends State<HasilAbsensiPage> {
         : null;
 
     // Ambil foto dari masing-masing record absensi
-    final fotoMasuk = masuk?['foto_wajah']?.toString();
-    final fotoPulang = pulang?['foto_wajah']?.toString();
+    final fotoMasuk = masuk?['foto_absen_url']?.toString();
+    final fotoPulang = pulang?['foto_absen_url']?.toString();
 
     return Container(
       padding: const EdgeInsets.all(16),

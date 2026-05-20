@@ -1,423 +1,467 @@
-import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import '../../controllers/auth_controller.dart';
 
-class LoginPage extends GetView<AuthController> {
+// Asset: assets/images/login_bg.png
+
+class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final emailController = TextEditingController();
-    final passwordController = TextEditingController();
-    final obscurePassword = true.obs;
-    final emailError = ''.obs;
-    final passwordError = ''.obs;
+  State<LoginPage> createState() => _LoginPageState();
+}
 
+class _LoginPageState extends State<LoginPage> {
+  late final TextEditingController _emailController;
+  late final TextEditingController _passwordController;
+
+  final _obscurePassword = true.obs;
+  final _emailError = ''.obs;
+  final _passwordError = ''.obs;
+  final _rememberMe = true.obs;
+
+  AuthController get _auth => Get.find<AuthController>();
+
+  @override
+  void initState() {
+    super.initState();
+    _emailController = TextEditingController();
+    _passwordController = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  // ── BUILD ─────────────────────────────────────────────────────────────────
+
+  @override
+  Widget build(BuildContext context) {
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: const SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
-        statusBarIconBrightness: Brightness.light,
+        statusBarIconBrightness: Brightness.dark,
       ),
       child: Scaffold(
+        backgroundColor: Colors.white,
         body: Obx(
-          () => controller.isLoading.value
-              ? _buildLoadingScreen()
-              : _buildLoginScreen(
-                  context,
-                  emailController,
-                  passwordController,
-                  obscurePassword,
-                  emailError,
-                  passwordError,
-                ),
+          () => _auth.isLoading.value ? _buildLoading() : _buildBody(context),
         ),
       ),
     );
   }
 
-  // ── LOADING ──────────────────────────────────────────────────────────────
+  // ── LOADING ───────────────────────────────────────────────────────────────
 
-  Widget _buildLoadingScreen() {
-    return Container(
-      color: const Color(0xFF1565C0),
-      child: const Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5),
-            SizedBox(height: 16),
-            Text(
-              'Memproses login...',
-              style: TextStyle(
+  Widget _buildLoading() {
+    return const Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          SizedBox(
+            width: 28,
+            height: 28,
+            child: CircularProgressIndicator(
+              color: Color(0xFF1B4FD8),
+              strokeWidth: 2.5,
+            ),
+          ),
+          SizedBox(height: 16),
+          Text(
+            'Memproses login...',
+            style: TextStyle(
+              color: Color(0xFF64748B),
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── BODY ──────────────────────────────────────────────────────────────────
+
+  Widget _buildBody(BuildContext context) {
+    final screenHeight = MediaQuery.of(context).size.height;
+    final imageHeight = screenHeight * 0.52;
+
+    return SingleChildScrollView(
+      physics: const ClampingScrollPhysics(),
+      child: Column(
+        children: [
+          // Gambar atas
+          SizedBox(
+            height: imageHeight,
+            width: double.infinity,
+            child: Image.asset(
+              'assets/images/login_bg.png',
+              fit: BoxFit.cover,
+              alignment: Alignment.topCenter,
+            ),
+          ),
+
+          // Form sheet overlap ke gambar
+          Transform.translate(
+            offset: const Offset(0, -24),
+            child: Container(
+              width: double.infinity,
+              decoration: const BoxDecoration(
                 color: Colors.white,
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(28),
+                  topRight: Radius.circular(28),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Color(0x12000000),
+                    blurRadius: 16,
+                    offset: Offset(0, -4),
+                  ),
+                ],
               ),
+              child: _buildFormContent(),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 
-  // ── MAIN SCREEN ──────────────────────────────────────────────────────────
+  // ── FORM CONTENT ──────────────────────────────────────────────────────────
 
-  Widget _buildLoginScreen(
-    BuildContext context,
-    TextEditingController emailController,
-    TextEditingController passwordController,
-    RxBool obscurePassword,
-    RxString emailError,
-    RxString passwordError,
-  ) {
-    return Container(
-      color: const Color(0xFF1565C0),
-      child: SafeArea(
-        child: Column(
-          children: [
-            // ── TOP: Logo area dengan blob ──
-            Expanded(flex: 5, child: _buildBlobHeader()),
-
-            // ── BOTTOM: Form sheet ──
-            Expanded(
-              flex: 7,
-              child: Container(
-                width: double.infinity,
-                decoration: const BoxDecoration(
-                  color: Color(0xFFF2F4F7),
-                  borderRadius: BorderRadius.only(
-                    topLeft: Radius.circular(32),
-                    topRight: Radius.circular(32),
-                  ),
-                ),
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Masuk ke Akun',
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFF1A1F36),
-                          letterSpacing: -0.3,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Silahkan masuk untuk melanjutkan',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: Colors.grey.shade500,
-                        ),
-                      ),
-                      const SizedBox(height: 28),
-                      _buildLabel('Email'),
-                      const SizedBox(height: 8),
-                      _buildEmailField(emailController, emailError),
-                      const SizedBox(height: 16),
-                      _buildLabel('Password'),
-                      const SizedBox(height: 8),
-                      _buildPasswordField(
-                        passwordController,
-                        obscurePassword,
-                        passwordError,
-                      ),
-                      const SizedBox(height: 24),
-                      _buildLoginButton(
-                        emailController,
-                        passwordController,
-                        emailError,
-                        passwordError,
-                      ),
-                      const SizedBox(height: 20),
-                      _buildInfoRow(),
-                    ],
-                  ),
-                ),
+  Widget _buildFormContent() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(28, 20, 28, 40),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Handle bar
+          Center(
+            child: Container(
+              width: 36,
+              height: 4,
+              margin: const EdgeInsets.only(bottom: 20),
+              decoration: BoxDecoration(
+                color: const Color(0xFFE8ECF2),
+                borderRadius: BorderRadius.circular(2),
               ),
             ),
-          ],
-        ),
+          ),
+
+          // Judul — 2 baris, font ketat & bold
+          const Text(
+            'Selamat Datang!',
+            style: TextStyle(
+              fontSize: 34,
+              fontWeight: FontWeight.w800,
+              color: Color(0xFF0F172A),
+              letterSpacing: 0.40,
+              height: 1.05,
+            ),
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'Masuk ke akunmu untuk melanjutkan',
+            style: TextStyle(
+              fontSize: 13,
+              color: Color(0xFFADB5C7),
+              letterSpacing: 0.1,
+            ),
+          ),
+
+          const SizedBox(height: 28),
+
+          // Email — flat underline style
+          _buildFlatLabel('Username / Email'),
+          const SizedBox(height: 8),
+          _buildEmailField(),
+
+          const SizedBox(height: 20),
+
+          // Password — flat underline style
+          _buildFlatLabel('Password'),
+          const SizedBox(height: 8),
+          _buildPasswordField(),
+
+          const SizedBox(height: 16),
+
+          // Ingat saya + Lupa password
+          _buildRememberForgotRow(),
+
+          const SizedBox(height: 32),
+
+          // Tombol masuk — full gradient modern
+          _buildLoginButton(),
+
+          const SizedBox(height: 20),
+
+          // Info
+          _buildInfoRow(),
+        ],
       ),
     );
   }
 
-  // ── BLOB HEADER ──────────────────────────────────────────────────────────
+  // ── FLAT LABEL ────────────────────────────────────────────────────────────
 
-  Widget _buildBlobHeader() {
-    return Stack(
-      clipBehavior: Clip.none,
-      children: [
-        // Blob 1 — kanan atas, besar
-        Positioned(
-          top: -50,
-          right: -50,
-          child: _Blob(
-            width: 200,
-            height: 200,
-            color: Colors.white.withOpacity(0.08),
-            borderRadiusCSS: '60% 40% 70% 30% / 50% 60% 40% 50%',
-          ),
-        ),
-        // Blob 2 — kiri bawah
-        Positioned(
-          bottom: 20,
-          left: -30,
-          child: _Blob(
-            width: 150,
-            height: 150,
-            color: Colors.white.withOpacity(0.06),
-            borderRadiusCSS: '30% 70% 50% 50% / 60% 40% 60% 40%',
-          ),
-        ),
-        // Blob 3 — tengah kiri, kecil aksen
-        Positioned(
-          top: 40,
-          left: 60,
-          child: _Blob(
-            width: 80,
-            height: 80,
-            color: Colors.white.withOpacity(0.05),
-            borderRadiusCSS: '50% 50% 30% 70% / 40% 60% 40% 60%',
-          ),
-        ),
-        // Blob 4 — kanan tengah, medium
-        Positioned(
-          bottom: 50,
-          right: 30,
-          child: _Blob(
-            width: 110,
-            height: 100,
-            color: Colors.white.withOpacity(0.06),
-            borderRadiusCSS: '40% 60% 60% 40% / 50% 40% 60% 50%',
-          ),
-        ),
-
-        // Konten (logo + teks)
-        Padding(
-          padding: const EdgeInsets.fromLTRB(28, 0, 28, 24),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Icon box
-              Container(
-                width: 56,
-                height: 56,
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.18),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: Colors.white.withOpacity(0.28),
-                    width: 1,
-                  ),
-                ),
-                child: const Icon(
-                  Icons.fingerprint,
-                  color: Colors.white,
-                  size: 28,
-                ),
-              ),
-              const SizedBox(height: 18),
-              const Text(
-                'Absensi App',
-                style: TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.w700,
-                  color: Colors.white,
-                  letterSpacing: -0.5,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                'Absensi berbasis lokasi & wajah',
-                style: TextStyle(
-                  fontSize: 13,
-                  color: Colors.white.withOpacity(0.65),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  // ── LABEL ─────────────────────────────────────────────────────────────────
-
-  Widget _buildLabel(String text) {
+  Widget _buildFlatLabel(String text) {
     return Text(
       text,
       style: const TextStyle(
-        fontSize: 13,
-        fontWeight: FontWeight.w600,
-        color: Color(0xFF1A1F36),
+        fontSize: 11,
+        fontWeight: FontWeight.w700,
+        color: Color(0xFF94A3B8),
+        letterSpacing: 1.0,
       ),
     );
   }
 
-  // ── EMAIL FIELD ───────────────────────────────────────────────────────────
+  // ── EMAIL FIELD — flat underline ──────────────────────────────────────────
 
-  Widget _buildEmailField(
-    TextEditingController emailController,
-    RxString emailError,
-  ) {
+  Widget _buildEmailField() {
     return Obx(
       () => TextField(
-        controller: emailController,
-        keyboardType: TextInputType.emailAddress,
-        style: const TextStyle(fontSize: 14, color: Color(0xFF1A1F36)),
+        controller: _emailController,
+        keyboardType: TextInputType.text,
+        style: const TextStyle(
+          fontSize: 15,
+          color: Color(0xFF0F172A),
+          fontWeight: FontWeight.w500,
+        ),
         decoration: InputDecoration(
-          hintText: 'contoh@email.com',
-          hintStyle: TextStyle(fontSize: 13, color: Colors.grey.shade400),
-          errorText: emailError.value.isEmpty ? null : emailError.value,
+          hintText: 'contoh@email.com atau username',
+          hintStyle: const TextStyle(
+            fontSize: 14,
+            color: Color(0xFFCBD5E1),
+            fontWeight: FontWeight.w400,
+          ),
+          errorText: _emailError.value.isEmpty ? null : _emailError.value,
           prefixIcon: Icon(
-            Icons.email_outlined,
+            Icons.alternate_email_rounded,
             size: 18,
-            color: emailError.value.isEmpty
-                ? const Color(0xFF8A94A6)
+            color: _emailError.value.isEmpty
+                ? const Color(0xFF1B4FD8)
                 : Colors.red.shade400,
           ),
-          filled: true,
-          fillColor: Colors.white,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(14),
-            borderSide: BorderSide.none,
+          prefixIconConstraints: const BoxConstraints(
+            minWidth: 36,
+            minHeight: 36,
           ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(14),
-            borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+          isDense: true,
+          filled: false,
+          border: const UnderlineInputBorder(
+            borderSide: BorderSide(color: Color(0xFFE2E8F0), width: 1.5),
           ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(14),
-            borderSide: const BorderSide(color: Color(0xFF1976D2), width: 1.5),
+          enabledBorder: const UnderlineInputBorder(
+            borderSide: BorderSide(color: Color(0xFFE2E8F0), width: 1.5),
           ),
-          errorBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(14),
-            borderSide: BorderSide(color: Colors.red.shade300),
+          focusedBorder: const UnderlineInputBorder(
+            borderSide: BorderSide(color: Color(0xFF1B4FD8), width: 2),
           ),
-          focusedErrorBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(14),
-            borderSide: BorderSide(color: Colors.red.shade400, width: 1.5),
+          errorBorder: UnderlineInputBorder(
+            borderSide: BorderSide(color: Colors.red.shade300, width: 1.5),
           ),
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 16,
-            vertical: 15,
+          focusedErrorBorder: UnderlineInputBorder(
+            borderSide: BorderSide(color: Colors.red.shade400, width: 2),
           ),
+          contentPadding: const EdgeInsets.symmetric(vertical: 12),
         ),
-        onChanged: (_) => emailError.value = '',
+        onChanged: (_) => _emailError.value = '',
       ),
     );
   }
 
-  // ── PASSWORD FIELD ────────────────────────────────────────────────────────
+  // ── PASSWORD FIELD — flat underline ───────────────────────────────────────
 
-  Widget _buildPasswordField(
-    TextEditingController passwordController,
-    RxBool obscurePassword,
-    RxString passwordError,
-  ) {
+  Widget _buildPasswordField() {
     return Obx(
       () => TextField(
-        controller: passwordController,
-        obscureText: obscurePassword.value,
-        style: const TextStyle(fontSize: 14, color: Color(0xFF1A1F36)),
+        controller: _passwordController,
+        obscureText: _obscurePassword.value,
+        style: const TextStyle(
+          fontSize: 15,
+          color: Color(0xFF0F172A),
+          fontWeight: FontWeight.w500,
+        ),
         decoration: InputDecoration(
           hintText: 'Minimal 6 karakter',
-          hintStyle: TextStyle(fontSize: 13, color: Colors.grey.shade400),
-          errorText: passwordError.value.isEmpty ? null : passwordError.value,
+          hintStyle: const TextStyle(
+            fontSize: 14,
+            color: Color(0xFFCBD5E1),
+            fontWeight: FontWeight.w400,
+          ),
+          errorText: _passwordError.value.isEmpty ? null : _passwordError.value,
+          // prefix & suffix pakai icon biasa — Flutter handle alignment otomatis
           prefixIcon: Icon(
-            Icons.lock_outline,
+            Icons.lock_outline_rounded,
             size: 18,
-            color: passwordError.value.isEmpty
-                ? const Color(0xFF8A94A6)
+            color: _passwordError.value.isEmpty
+                ? const Color(0xFF1B4FD8)
                 : Colors.red.shade400,
           ),
+          prefixIconConstraints: const BoxConstraints(
+            minWidth: 36,
+            minHeight: 36,
+          ),
           suffixIcon: GestureDetector(
-            onTap: () => obscurePassword.toggle(),
+            onTap: () => _obscurePassword.toggle(),
             child: Icon(
-              obscurePassword.value
+              _obscurePassword.value
                   ? Icons.visibility_off_outlined
                   : Icons.visibility_outlined,
               size: 18,
-              color: const Color(0xFF8A94A6),
+              color: const Color(0xFFCBD5E1),
             ),
           ),
-          filled: true,
-          fillColor: Colors.white,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(14),
-            borderSide: BorderSide.none,
+          suffixIconConstraints: const BoxConstraints(
+            minWidth: 36,
+            minHeight: 36,
           ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(14),
-            borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+          isDense: true,
+          filled: false,
+          border: const UnderlineInputBorder(
+            borderSide: BorderSide(color: Color(0xFFE2E8F0), width: 1.5),
           ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(14),
-            borderSide: const BorderSide(color: Color(0xFF1976D2), width: 1.5),
+          enabledBorder: const UnderlineInputBorder(
+            borderSide: BorderSide(color: Color(0xFFE2E8F0), width: 1.5),
           ),
-          errorBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(14),
-            borderSide: BorderSide(color: Colors.red.shade300),
+          focusedBorder: const UnderlineInputBorder(
+            borderSide: BorderSide(color: Color(0xFF1B4FD8), width: 2),
           ),
-          focusedErrorBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(14),
-            borderSide: BorderSide(color: Colors.red.shade400, width: 1.5),
+          errorBorder: UnderlineInputBorder(
+            borderSide: BorderSide(color: Colors.red.shade300, width: 1.5),
           ),
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 16,
-            vertical: 15,
+          focusedErrorBorder: UnderlineInputBorder(
+            borderSide: BorderSide(color: Colors.red.shade400, width: 2),
           ),
+          contentPadding: const EdgeInsets.symmetric(vertical: 12),
         ),
-        onChanged: (_) => passwordError.value = '',
+        onChanged: (_) => _passwordError.value = '',
       ),
     );
   }
 
-  // ── LOGIN BUTTON ──────────────────────────────────────────────────────────
+  // ── REMEMBER + LUPA PASSWORD ──────────────────────────────────────────────
 
-  Widget _buildLoginButton(
-    TextEditingController emailController,
-    TextEditingController passwordController,
-    RxString emailError,
-    RxString passwordError,
-  ) {
-    return GestureDetector(
-      onTap: () => _login(
-        emailController,
-        passwordController,
-        emailError,
-        passwordError,
+  Widget _buildRememberForgotRow() {
+    return Obx(
+      () => Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          GestureDetector(
+            onTap: () => _rememberMe.toggle(),
+            child: Row(
+              children: [
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 150),
+                  width: 18,
+                  height: 18,
+                  decoration: BoxDecoration(
+                    color: _rememberMe.value
+                        ? const Color(0xFF1B4FD8)
+                        : Colors.transparent,
+                    borderRadius: BorderRadius.circular(4),
+                    border: Border.all(
+                      color: _rememberMe.value
+                          ? const Color(0xFF1B4FD8)
+                          : const Color(0xFFCBD5E1),
+                      width: 1.5,
+                    ),
+                  ),
+                  child: _rememberMe.value
+                      ? const Icon(Icons.check, size: 11, color: Colors.white)
+                      : null,
+                ),
+                const SizedBox(width: 8),
+                const Text(
+                  'Ingat saya',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Color(0xFF64748B),
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          GestureDetector(
+            onTap: () {
+              // TODO: lupa password
+            },
+            child: const Text(
+              'Lupa password?',
+              style: TextStyle(
+                fontSize: 12,
+                color: Color(0xFF1B4FD8),
+                fontWeight: FontWeight.w600,
+                letterSpacing: 0.1,
+              ),
+            ),
+          ),
+        ],
       ),
+    );
+  }
+
+  // ── LOGIN BUTTON — gradient modern ────────────────────────────────────────
+
+  Widget _buildLoginButton() {
+    return GestureDetector(
+      onTap: _login,
       child: Container(
         width: double.infinity,
         height: 52,
         decoration: BoxDecoration(
-          color: const Color(0xFF1565C0),
-          borderRadius: BorderRadius.circular(14),
+          gradient: const LinearGradient(
+            colors: [Color(0xFF1B4FD8), Color(0xFF3B6FF0)],
+            begin: Alignment.centerLeft,
+            end: Alignment.centerRight,
+          ),
+          borderRadius: BorderRadius.circular(12),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFF1565C0).withOpacity(0.35),
+              color: const Color(0xFF1B4FD8).withOpacity(0.35),
               blurRadius: 16,
               offset: const Offset(0, 6),
             ),
           ],
         ),
-        child: const Center(
-          child: Text(
-            'Masuk',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 15,
-              fontWeight: FontWeight.w600,
-              letterSpacing: 0.3,
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            // Teks tombol
+            const Text(
+              'MASUK',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 2.0,
+              ),
             ),
-          ),
+            // Arrow di kanan
+            Positioned(
+              right: 20,
+              child: Container(
+                width: 28,
+                height: 28,
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(
+                  Icons.arrow_forward_rounded,
+                  color: Colors.white,
+                  size: 16,
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -428,12 +472,12 @@ class LoginPage extends GetView<AuthController> {
   Widget _buildInfoRow() {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Icon(Icons.info_outline, size: 13, color: Colors.grey.shade400),
-        const SizedBox(width: 6),
+      children: const [
+        Icon(Icons.info_outline_rounded, size: 12, color: Color(0xFFCBD5E1)),
+        SizedBox(width: 5),
         Text(
           'Hubungi admin jika ada kendala login',
-          style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
+          style: TextStyle(fontSize: 11, color: Color(0xFFCBD5E1)),
         ),
       ],
     );
@@ -441,119 +485,31 @@ class LoginPage extends GetView<AuthController> {
 
   // ── VALIDATION ────────────────────────────────────────────────────────────
 
-  void _login(
-    TextEditingController emailController,
-    TextEditingController passwordController,
-    RxString emailError,
-    RxString passwordError,
-  ) {
-    emailError.value = '';
-    passwordError.value = '';
+  void _login() {
+    _emailError.value = '';
+    _passwordError.value = '';
 
-    final email = emailController.text.trim();
-    final password = passwordController.text.trim();
+    final email = _emailController.text.trim();
+    final password = _passwordController.text.trim();
     bool isValid = true;
 
     if (email.isEmpty) {
-      emailError.value = 'Email wajib diisi';
+      _emailError.value = 'Email atau username wajib diisi';
       isValid = false;
-    } else if (!GetUtils.isEmail(email)) {
-      emailError.value = 'Format email tidak valid';
+    } else if (email.contains('@') && !GetUtils.isEmail(email)) {
+      _emailError.value = 'Format email tidak valid';
       isValid = false;
     }
 
     if (password.isEmpty) {
-      passwordError.value = 'Password wajib diisi';
+      _passwordError.value = 'Password wajib diisi';
       isValid = false;
     } else if (password.length < 6) {
-      passwordError.value = 'Password minimal 6 karakter';
+      _passwordError.value = 'Password minimal 6 karakter';
       isValid = false;
     }
 
     if (!isValid) return;
-    Get.find<AuthController>().login(email, password);
+    _auth.login(email, password);
   }
-}
-
-// ── BLOB WIDGET ───────────────────────────────────────────────────────────────
-// Flutter tidak support CSS border-radius 8-value,
-// jadi kita pakai CustomPainter dengan cubic bezier untuk bentuk organik
-
-class _Blob extends StatelessWidget {
-  final double width;
-  final double height;
-  final Color color;
-  // parameter ini tidak dipakai di Flutter, hanya untuk dokumentasi
-  final String borderRadiusCSS;
-
-  const _Blob({
-    required this.width,
-    required this.height,
-    required this.color,
-    required this.borderRadiusCSS,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return CustomPaint(
-      size: Size(width, height),
-      painter: _BlobPainter(color: color, seed: borderRadiusCSS.hashCode),
-    );
-  }
-}
-
-class _BlobPainter extends CustomPainter {
-  final Color color;
-  final int seed;
-
-  const _BlobPainter({required this.color, required this.seed});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()..color = color;
-    final path = _generateBlobPath(size, seed);
-    canvas.drawPath(path, paint);
-  }
-
-  Path _generateBlobPath(Size size, int seed) {
-    final rng = math.Random(seed);
-    final cx = size.width / 2;
-    final cy = size.height / 2;
-    final rx = size.width / 2;
-    final ry = size.height / 2;
-
-    // 8 titik dengan variasi organik
-    const points = 8;
-    final angleStep = (math.pi * 2) / points;
-    final anchors = <Offset>[];
-
-    for (int i = 0; i < points; i++) {
-      final angle = i * angleStep - math.pi / 2;
-      // variasi radius 70%–100%
-      final rVariation = 0.7 + rng.nextDouble() * 0.3;
-      final x = cx + math.cos(angle) * rx * rVariation;
-      final y = cy + math.sin(angle) * ry * rVariation;
-      anchors.add(Offset(x, y));
-    }
-
-    final path = Path();
-    path.moveTo(
-      (anchors.last.dx + anchors.first.dx) / 2,
-      (anchors.last.dy + anchors.first.dy) / 2,
-    );
-
-    for (int i = 0; i < points; i++) {
-      final curr = anchors[i];
-      final next = anchors[(i + 1) % points];
-      final midX = (curr.dx + next.dx) / 2;
-      final midY = (curr.dy + next.dy) / 2;
-      path.quadraticBezierTo(curr.dx, curr.dy, midX, midY);
-    }
-
-    path.close();
-    return path;
-  }
-
-  @override
-  bool shouldRepaint(covariant _BlobPainter old) => old.seed != seed;
 }

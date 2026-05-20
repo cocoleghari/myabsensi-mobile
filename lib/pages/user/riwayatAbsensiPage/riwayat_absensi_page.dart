@@ -65,12 +65,9 @@ class _RiwayatAbsensiPageState extends State<RiwayatAbsensiPage> {
                 child: CustomScrollView(
                   physics: const AlwaysScrollableScrollPhysics(),
                   slivers: [
-                    // ── HEADER BIRU ──
                     SliverToBoxAdapter(
                       child: _buildHeader(context, controller),
                     ),
-
-                    // ── KONTEN ──
                     SliverToBoxAdapter(
                       child: Container(
                         decoration: const BoxDecoration(
@@ -110,7 +107,6 @@ class _RiwayatAbsensiPageState extends State<RiwayatAbsensiPage> {
           padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
           child: Stack(
             children: [
-              // Decorative circles
               Positioned(
                 right: -20,
                 top: -10,
@@ -135,7 +131,6 @@ class _RiwayatAbsensiPageState extends State<RiwayatAbsensiPage> {
                   ),
                 ),
               ),
-
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -150,7 +145,6 @@ class _RiwayatAbsensiPageState extends State<RiwayatAbsensiPage> {
                         ),
                       ),
                       const Spacer(),
-                      // Refresh button
                       GestureDetector(
                         onTap: () => controller.fetchRiwayatAbsensi(),
                         child: Container(
@@ -173,27 +167,63 @@ class _RiwayatAbsensiPageState extends State<RiwayatAbsensiPage> {
                       ),
                     ],
                   ),
-
                   const SizedBox(height: 20),
                   Container(height: 1, color: Colors.white.withOpacity(0.15)),
                   const SizedBox(height: 20),
 
-                  // Summary row
+                  // ── Summary chips ──
                   Obx(() {
-                    final total = controller.riwayatAbsensi.length;
-                    return Row(
+                    final riwayat = controller.riwayatAbsensi;
+
+                    final uniqueDates = riwayat
+                        .map((e) => e['tanggal_absen']?.toString() ?? '')
+                        .where((d) => d.isNotEmpty)
+                        .toSet();
+
+                    // Semua helper return int — tidak ada ambiguitas tipe
+                    final int thisMonthCount = _countThisMonth(riwayat);
+                    final int terlambatCount = _countTerlambatThisMonth(
+                      riwayat,
+                    );
+                    final int tepatWaktuCount = thisMonthCount - terlambatCount;
+
+                    return Column(
                       children: [
-                        _buildStatChip(
-                          icon: Icons.history_rounded,
-                          label: 'Total Absensi',
-                          value: '$total Data',
+                        Row(
+                          children: [
+                            _buildStatChip(
+                              icon: Icons.history_rounded,
+                              label: 'Total Hari',
+                              value: '${uniqueDates.length} Hari',
+                            ),
+                            const SizedBox(width: 10),
+                            _buildStatChip(
+                              icon: Icons.calendar_today_outlined,
+                              label: 'Bulan Ini',
+                              value: '$thisMonthCount Absen',
+                            ),
+                          ],
                         ),
-                        const SizedBox(width: 10),
-                        _buildStatChip(
-                          icon: Icons.calendar_today_outlined,
-                          label: 'Bulan Ini',
-                          value: _countThisMonth(controller.riwayatAbsensi),
-                        ),
+                        if (terlambatCount > 0) ...[
+                          const SizedBox(height: 10),
+                          Row(
+                            children: [
+                              _buildStatChip(
+                                icon: Icons.warning_amber_rounded,
+                                label: 'Terlambat',
+                                value: '$terlambatCount Kali',
+                                accentColor: const Color(0xFFFFCC02),
+                              ),
+                              const SizedBox(width: 10),
+                              _buildStatChip(
+                                icon: Icons.check_circle_outline_rounded,
+                                label: 'Tepat Waktu',
+                                value: '$tepatWaktuCount Absen',
+                                accentColor: const Color(0xFF69F0AE),
+                              ),
+                            ],
+                          ),
+                        ],
                       ],
                     );
                   }),
@@ -210,7 +240,9 @@ class _RiwayatAbsensiPageState extends State<RiwayatAbsensiPage> {
     required IconData icon,
     required String label,
     required String value,
+    Color? accentColor,
   }) {
+    final color = accentColor ?? Colors.white;
     return Expanded(
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
@@ -221,7 +253,7 @@ class _RiwayatAbsensiPageState extends State<RiwayatAbsensiPage> {
         ),
         child: Row(
           children: [
-            Icon(icon, color: Colors.white.withOpacity(0.85), size: 18),
+            Icon(icon, color: color.withOpacity(0.9), size: 18),
             const SizedBox(width: 8),
             Expanded(
               child: Column(
@@ -236,10 +268,10 @@ class _RiwayatAbsensiPageState extends State<RiwayatAbsensiPage> {
                   ),
                   Text(
                     value,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w700,
-                      color: Colors.white,
+                      color: color,
                     ),
                   ),
                 ],
@@ -269,6 +301,7 @@ class _RiwayatAbsensiPageState extends State<RiwayatAbsensiPage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _sectionLabel('Daftar Absensi'),
+        const SizedBox(height: 8),
         ListView.builder(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
@@ -284,7 +317,7 @@ class _RiwayatAbsensiPageState extends State<RiwayatAbsensiPage> {
               dataMasuk = items.firstWhere(
                 (item) => item['tipe_absen'] == 'masuk',
               );
-            } catch (e) {
+            } catch (_) {
               dataMasuk = null;
             }
 
@@ -292,7 +325,7 @@ class _RiwayatAbsensiPageState extends State<RiwayatAbsensiPage> {
               dataPulang = items.firstWhere(
                 (item) => item['tipe_absen'] == 'pulang',
               );
-            } catch (e) {
+            } catch (_) {
               dataPulang = null;
             }
 
@@ -332,15 +365,34 @@ class _RiwayatAbsensiPageState extends State<RiwayatAbsensiPage> {
     );
   }
 
-  String _countThisMonth(List riwayat) {
+  // FIX: return int bukan String
+  int _countThisMonth(List riwayat) {
     final now = DateTime.now();
     int count = 0;
     for (final item in riwayat) {
       try {
-        final dt = DateTime.parse(item['waktu_absen'].toString());
+        final tanggal = item['tanggal_absen']?.toString() ?? '';
+        if (tanggal.isEmpty) continue;
+        final dt = DateTime.parse(tanggal);
         if (dt.month == now.month && dt.year == now.year) count++;
       } catch (_) {}
     }
-    return '$count Data';
+    return count;
+  }
+
+  int _countTerlambatThisMonth(List riwayat) {
+    final now = DateTime.now();
+    int count = 0;
+    for (final item in riwayat) {
+      try {
+        final tanggal = item['tanggal_absen']?.toString() ?? '';
+        if (tanggal.isEmpty) continue;
+        final dt = DateTime.parse(tanggal);
+        if (dt.month == now.month && dt.year == now.year) {
+          if (item['status']?.toString() == 'terlambat') count++;
+        }
+      } catch (_) {}
+    }
+    return count;
   }
 }
