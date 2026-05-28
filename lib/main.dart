@@ -5,6 +5,7 @@ import 'package:myabsensi_mobile/bindings/employee_binding.dart';
 import 'package:myabsensi_mobile/bindings/employee_pusat_lokasi_binding.dart';
 import 'package:myabsensi_mobile/bindings/position_binding.dart';
 import 'package:myabsensi_mobile/bindings/shift_binding.dart';
+import 'package:myabsensi_mobile/controllers/app_config.dart';
 import 'package:myabsensi_mobile/pages/admin/employeePage/employee_list_page.dart';
 import 'package:myabsensi_mobile/pages/admin/employeeStatusPage/employee_status_page.dart';
 import 'package:myabsensi_mobile/pages/admin/jobGradePage/job_grade_page.dart';
@@ -43,6 +44,7 @@ void main() async {
 
   await initializeDateFormatting('id_ID', null);
   await GetStorage.init();
+  await AppConfig.getBaseUrl();
 
   runApp(const MyApp());
 }

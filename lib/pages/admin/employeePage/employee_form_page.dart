@@ -502,6 +502,7 @@ class _EmployeeFormPageState extends State<EmployeeFormPage>
     }
 
     return _scrolled([
+      // Perusahaan tetap pakai DropdownButtonFormField (biasanya sedikit)
       DropdownButtonFormField<int>(
         isExpanded: true,
         decoration: const InputDecoration(
@@ -525,30 +526,45 @@ class _EmployeeFormPageState extends State<EmployeeFormPage>
         ],
         onChanged: (v) => setState(() => _companyId = v),
       ),
-      _dropdownFromList(
-        'Departemen',
-        _departmentId,
-        _ctrl.departments,
-        (v) => setState(() => _departmentId = v),
+
+      // ── Departemen — searchable ──────────────────────────────
+      _SearchableDropdown(
+        label: 'Departemen',
+        value: _departmentId,
+        items: _ctrl.departments,
+        onChanged: (v) => setState(() => _departmentId = v),
       ),
-      _dropdownFromList(
-        'Jabatan / Posisi',
-        _positionId,
-        _ctrl.positions,
-        (v) => setState(() => _positionId = v),
+
+      // ── Jabatan / Posisi — searchable ────────────────────────
+      _SearchableDropdown(
+        label: 'Jabatan / Posisi',
+        value: _positionId,
+        items: _ctrl.positions,
+        onChanged: (v) => setState(() => _positionId = v),
       ),
-      _dropdownFromList(
-        'Job Level',
-        _jobLevelId,
-        _ctrl.jobLevels,
-        (v) => setState(() => _jobLevelId = v),
+
+      // ── Job Level — searchable ───────────────────────────────
+      _SearchableDropdown(
+        label: 'Job Level',
+        value: _jobLevelId,
+        items: _ctrl.jobLevels,
+        onChanged: (v) => setState(() => _jobLevelId = v),
       ),
-      _dropdownFromListWithSub(
-        'Job Grade',
-        _jobGradeId,
-        _ctrl.jobGrades,
-        (v) => setState(() => _jobGradeId = v),
+
+      // ── Job Grade — searchable, tampilkan code sebagai subtitle
+      _SearchableDropdown(
+        label: 'Job Grade',
+        value: _jobGradeId,
+        items: _ctrl.jobGrades,
+        displayText: (e) {
+          final name = e['name']?.toString() ?? '';
+          final code = e['code']?.toString() ?? '';
+          return code.isNotEmpty ? '$name ($code)' : name;
+        },
+        subtitleText: (e) => e['code']?.toString() ?? '',
+        onChanged: (v) => setState(() => _jobGradeId = v),
       ),
+
       _dropdownFromList(
         'Status Karyawan',
         _statusId,
@@ -840,6 +856,404 @@ class _EmployeeFormPageState extends State<EmployeeFormPage>
                     '${value.year}'
               : 'Pilih tanggal',
           style: TextStyle(color: value != null ? null : Colors.grey),
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SEARCHABLE DROPDOWN DIALOG
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _SearchableDropdown extends StatefulWidget {
+  final String label;
+  final int? value;
+  final List<Map<String, dynamic>> items;
+  final ValueChanged<int?> onChanged;
+  final String Function(Map<String, dynamic>)? displayText;
+  final String Function(Map<String, dynamic>)? subtitleText;
+
+  const _SearchableDropdown({
+    required this.label,
+    required this.value,
+    required this.items,
+    required this.onChanged,
+    this.displayText,
+    this.subtitleText,
+  });
+
+  @override
+  State<_SearchableDropdown> createState() => _SearchableDropdownState();
+}
+
+class _SearchableDropdownState extends State<_SearchableDropdown> {
+  String _getLabel(Map<String, dynamic> item) {
+    if (widget.displayText != null) return widget.displayText!(item);
+    return item['name']?.toString() ?? '';
+  }
+
+  String? _getSelectedLabel() {
+    if (widget.value == null) return null;
+    try {
+      final found = widget.items.firstWhere(
+        (e) => e['id'] == widget.value,
+        orElse: () => {},
+      );
+      return found.isEmpty ? null : _getLabel(found);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  // Di _SearchableDropdownState._openDialog()
+  // Di _SearchableDropdownState
+  void _openDialog() async {
+    final result = await showDialog<int?>(
+      context: context,
+      useSafeArea: false, // ← penting!
+      builder: (ctx) => _KeyboardAwareDialog(
+        // ← wrapper baru
+        child: _SearchableDropdownDialog(
+          label: widget.label,
+          value: widget.value,
+          items: widget.items,
+          displayText: widget.displayText ?? (e) => e['name']?.toString() ?? '',
+          subtitleText: widget.subtitleText,
+        ),
+      ),
+    );
+    if (result == -1) {
+      widget.onChanged(null);
+    } else if (result != null) {
+      widget.onChanged(result);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final selectedLabel = _getSelectedLabel();
+    final hasValue = selectedLabel != null;
+
+    return InkWell(
+      onTap: _openDialog,
+      borderRadius: BorderRadius.circular(4),
+      child: InputDecorator(
+        decoration: InputDecoration(
+          labelText: widget.label,
+          border: const OutlineInputBorder(),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 12,
+            vertical: 10,
+          ),
+          suffixIcon: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (hasValue)
+                GestureDetector(
+                  onTap: () => widget.onChanged(null),
+                  child: Icon(
+                    Icons.close,
+                    size: 18,
+                    color: Colors.grey.shade400,
+                  ),
+                ),
+              Icon(Icons.arrow_drop_down, color: Colors.grey.shade600),
+              const SizedBox(width: 4),
+            ],
+          ),
+        ),
+        child: Text(
+          selectedLabel ?? 'Pilih ${widget.label}',
+          style: TextStyle(
+            fontSize: 14,
+            color: hasValue ? Colors.black87 : Colors.grey.shade500,
+          ),
+          overflow: TextOverflow.ellipsis,
+        ),
+      ),
+    );
+  }
+}
+
+class _SearchableDropdownDialog extends StatefulWidget {
+  final String label;
+  final int? value;
+  final List<Map<String, dynamic>> items;
+  final String Function(Map<String, dynamic>) displayText;
+  final String Function(Map<String, dynamic>)? subtitleText;
+
+  const _SearchableDropdownDialog({
+    required this.label,
+    required this.value,
+    required this.items,
+    required this.displayText,
+    this.subtitleText,
+  });
+
+  @override
+  State<_SearchableDropdownDialog> createState() =>
+      _SearchableDropdownDialogState();
+}
+
+class _SearchableDropdownDialogState extends State<_SearchableDropdownDialog> {
+  final _searchCtrl = TextEditingController();
+  String _query = '';
+  int? _selected;
+
+  @override
+  void initState() {
+    super.initState();
+    _selected = widget.value;
+  }
+
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    super.dispose();
+  }
+
+  List<Map<String, dynamic>> get _filtered {
+    if (_query.isEmpty) return widget.items;
+    final q = _query.toLowerCase();
+    return widget.items.where((e) {
+      final main = widget.displayText(e).toLowerCase();
+      final sub = widget.subtitleText?.call(e).toLowerCase() ?? '';
+      return main.contains(q) || sub.contains(q);
+    }).toList();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final filtered = _filtered;
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // ── Header ──────────────────────────────────────
+        Container(
+          padding: const EdgeInsets.fromLTRB(20, 16, 12, 16),
+          color: Colors.blue,
+          child: Row(
+            children: [
+              const Icon(Icons.search, color: Colors.white, size: 20),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Pilih ${widget.label}',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 15,
+                  ),
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.close, color: Colors.white, size: 20),
+                onPressed: () => Navigator.pop(context),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+              ),
+            ],
+          ),
+        ),
+
+        // ── Search bar ──────────────────────────────────
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+          child: TextField(
+            controller: _searchCtrl,
+            autofocus: true,
+            onChanged: (v) => setState(() => _query = v),
+            style: const TextStyle(fontSize: 14),
+            decoration: InputDecoration(
+              hintText: 'Cari ${widget.label.toLowerCase()}...',
+              hintStyle: TextStyle(fontSize: 13, color: Colors.grey.shade400),
+              prefixIcon: Icon(
+                Icons.search,
+                size: 18,
+                color: Colors.grey.shade400,
+              ),
+              suffixIcon: _query.isNotEmpty
+                  ? IconButton(
+                      icon: Icon(
+                        Icons.close,
+                        size: 16,
+                        color: Colors.grey.shade400,
+                      ),
+                      onPressed: () {
+                        _searchCtrl.clear();
+                        setState(() => _query = '');
+                      },
+                    )
+                  : null,
+              contentPadding: const EdgeInsets.symmetric(
+                vertical: 10,
+                horizontal: 12,
+              ),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: BorderSide(color: Colors.grey.shade300),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: BorderSide(color: Colors.grey.shade300),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: const BorderSide(color: Colors.blue),
+              ),
+              filled: true,
+              fillColor: Colors.grey.shade50,
+              isDense: true,
+            ),
+          ),
+        ),
+
+        // ── Info jumlah ─────────────────────────────────
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          child: Row(
+            children: [
+              Text(
+                '${filtered.length} hasil',
+                style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
+              ),
+              const Spacer(),
+              if (_selected != null)
+                GestureDetector(
+                  onTap: () => Navigator.pop(context, -1),
+                  child: Text(
+                    'Kosongkan pilihan',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: Colors.red.shade400,
+                      decoration: TextDecoration.underline,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+
+        const Divider(height: 1),
+
+        // ── List — pakai Flexible agar tidak overflow ────
+        Flexible(
+          child: filtered.isEmpty
+              ? Padding(
+                  padding: const EdgeInsets.all(32),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.search_off,
+                        size: 40,
+                        color: Colors.grey.shade300,
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Tidak ada hasil untuk "$_query"',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Colors.grey.shade500,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                )
+              : ListView.separated(
+                  shrinkWrap: true,
+                  itemCount: filtered.length,
+                  separatorBuilder: (_, __) =>
+                      Divider(height: 1, color: Colors.grey.shade100),
+                  itemBuilder: (_, i) {
+                    final item = filtered[i];
+                    final id = item['id'] as int;
+                    final isSelected = id == _selected;
+                    final subtitle = widget.subtitleText?.call(item);
+
+                    return InkWell(
+                      onTap: () => Navigator.pop(context, id),
+                      child: Container(
+                        color: isSelected
+                            ? Colors.blue.withOpacity(0.06)
+                            : null,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    widget.displayText(item),
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: isSelected
+                                          ? FontWeight.w700
+                                          : FontWeight.normal,
+                                      color: isSelected
+                                          ? Colors.blue
+                                          : Colors.black87,
+                                    ),
+                                  ),
+                                  if (subtitle != null &&
+                                      subtitle.isNotEmpty) ...[
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      subtitle,
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        color: Colors.grey.shade500,
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ),
+                            if (isSelected)
+                              const Icon(
+                                Icons.check,
+                                size: 18,
+                                color: Colors.blue,
+                              ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Wrapper yang memastikan dialog naik saat keyboard muncul
+class _KeyboardAwareDialog extends StatelessWidget {
+  final Widget child;
+  const _KeyboardAwareDialog({required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return Align(
+      alignment: Alignment.topCenter,
+      child: Padding(
+        padding: EdgeInsets.only(
+          left: 20,
+          right: 20,
+          top: MediaQuery.of(context).padding.top + 40,
+          bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+        ),
+        child: Material(
+          borderRadius: BorderRadius.circular(16),
+          clipBehavior: Clip.antiAlias,
+          child: child,
         ),
       ),
     );

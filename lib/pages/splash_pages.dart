@@ -14,20 +14,37 @@ class _SplashPageState extends State<SplashPage> {
   @override
   void initState() {
     super.initState();
-
-    // Hapus native splash → Flutter UI mulai tampil
     FlutterNativeSplash.remove();
+    _navigate();
+  }
 
-    // Navigasi setelah 4 detik
-    Future.delayed(const Duration(milliseconds: 4000), () {
-      if (!mounted) return;
-      final auth = Get.find<AuthController>();
-      if (auth.isLoggedIn) {
-        Get.offAllNamed(auth.isAdmin ? '/admin' : '/user');
+  Future<void> _navigate() async {
+    await Future.delayed(const Duration(milliseconds: 2000));
+    if (!mounted) return;
+
+    final auth = Get.find<AuthController>();
+
+    debugPrint('=== SPLASH DEBUG ===');
+    debugPrint('token: "${auth.token.value}"');
+    debugPrint('role: "${auth.userRole}"');
+    debugPrint('isLoggedIn: ${auth.isLoggedIn}');
+    debugPrint('isAdmin: ${auth.isAdmin}');
+    debugPrint('isSuperAdmin: ${auth.isSuperAdmin}');
+    debugPrint('isHrd: ${auth.isHrd}');
+    debugPrint('isEmployee: ${auth.isEmployee}');
+
+    if (auth.isLoggedIn && auth.token.isNotEmpty) {
+      if (auth.isAdmin || auth.isSuperAdmin || auth.isHrd) {
+        debugPrint('>>> REDIRECT KE /admin');
+        Get.offAllNamed('/admin');
       } else {
-        Get.offAllNamed('/login');
+        debugPrint('>>> REDIRECT KE /user');
+        Get.offAllNamed('/user');
       }
-    });
+    } else {
+      debugPrint('>>> REDIRECT KE /login');
+      Get.offAllNamed('/login');
+    }
   }
 
   @override

@@ -42,35 +42,57 @@ class EmployeePusatLokasiController extends GetxController {
 
   // ── Internal (tanpa isLoading) ────────────────────────────────
 
+  // employee_pusat_lokasi_controller.dart
+
   Future<void> _fetchEmployeeLokasiBare() async {
     try {
       final baseUrl = await _resolvedBaseUrl;
-      final params = <String, String>{};
-      if (selectedEmployeeId.value != null)
-        params['employee_id'] = selectedEmployeeId.value.toString();
-      if (selectedPusatLokasiId.value != null)
-        params['pusat_lokasi_id'] = selectedPusatLokasiId.value.toString();
+      final allData = <Map<String, dynamic>>[];
+      int page = 1;
+      int lastPage = 1;
 
-      final uri = Uri.parse(
-        '$baseUrl/admin/employee-lokasi',
-      ).replace(queryParameters: params.isNotEmpty ? params : null);
+      do {
+        final params = <String, String>{
+          'page': page.toString(),
+          'per_page': '100',
+        };
+        if (selectedEmployeeId.value != null)
+          params['employee_id'] = selectedEmployeeId.value.toString();
+        if (selectedPusatLokasiId.value != null)
+          params['pusat_lokasi_id'] = selectedPusatLokasiId.value.toString();
 
-      final response = await http
-          .get(uri, headers: _authHeaders)
-          .timeout(const Duration(seconds: 10));
+        final uri = Uri.parse(
+          '$baseUrl/admin/employee-lokasi',
+        ).replace(queryParameters: params);
 
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        if (data['data'] is List) {
-          employeeLokasis.value = List<Map<String, dynamic>>.from(data['data']);
+        final response = await http
+            .get(uri, headers: _authHeaders)
+            .timeout(const Duration(seconds: 30));
+
+        debugPrint(
+          '=== employee-lokasi page $page status: ${response.statusCode}',
+        );
+
+        if (response.statusCode == 200) {
+          final data = jsonDecode(response.body);
+          final List<dynamic> items = data['data'] ?? [];
+          allData.addAll(items.map((e) => Map<String, dynamic>.from(e)));
+
+          lastPage = data['meta']?['last_page'] ?? 1;
+          debugPrint('=== page $page/$lastPage, loaded ${items.length} items');
+        } else {
+          debugPrint('=== employee-lokasi error: ${response.body}');
+          break;
         }
-      } else if (response.statusCode == 401) {
-        _handleUnauthorized();
-      } else {
-        errorMessage.value = 'Error ${response.statusCode}';
-      }
+
+        page++;
+      } while (page <= lastPage);
+
+      employeeLokasis.value = allData;
+      debugPrint('=== total employee-lokasi loaded: ${allData.length}');
     } catch (e) {
       errorMessage.value = 'Gagal memuat data: $e';
+      debugPrint('=== employee-lokasi exception: $e');
     }
   }
 
@@ -129,18 +151,16 @@ class EmployeePusatLokasiController extends GetxController {
     _baseUrl = await AppConfig.getBaseUrl();
     if (auth.token.isEmpty) return;
 
-    isLoading.value = true; // ✅ set loading SEBELUM semua fetch
+    isLoading.value = true;
     errorMessage.value = '';
 
     try {
-      // Jalankan paralel tapi tunggu SEMUA selesai
-      await Future.wait([
-        _fetchEmployeeLokasiBare(), // tanpa isLoading
-        _fetchEmployeesBare(), // tanpa isLoading
-        _fetchPusatLokasiBare(), // tanpa isLoading
-      ]);
+      // Serial — satu per satu, tidak paralel
+      await _fetchEmployeeLokasiBare();
+      await _fetchPusatLokasiBare();
+      // _fetchEmployeesBare() DIHAPUS — nama sudah ada di relasi employee
     } finally {
-      isLoading.value = false; // ✅ loading selesai setelah SEMUA done
+      isLoading.value = false;
     }
   }
 

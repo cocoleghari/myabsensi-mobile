@@ -61,7 +61,7 @@ flutter_native_splash:
 
   # Android 12+ — tidak support full bg image, pakai logo + warna
   android_12:
-    image: assets/images/logo_transparan.png
+    image: assets/images/logo_baru.png
     color: "#FFFFFF"
     icon_background_color: "#FFFFFF"
 
@@ -74,10 +74,10 @@ flutter_native_splash:
 flutter_launcher_icons:
   android: true
   ios: true
-  image_path: "assets/icon/app_icon_karyaone.png"
+  image_path: "assets/icon/app_icon.png"
 
   adaptive_icon_background: "#FFFFFF"
-  adaptive_icon_foreground: "assets/icon/app_icon_karyaone.png"
+  adaptive_icon_foreground: "assets/icon/app_icon.png"
 
 # ─────────────────────────────────────────────────────────────
 # Flutter

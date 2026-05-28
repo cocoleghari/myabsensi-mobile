@@ -178,7 +178,11 @@ class UserLokasiController extends GetxController {
         }
       } else if (response.statusCode == 401) {
         errorMessage.value = 'Sesi habis, silahkan login ulang';
-        Future.delayed(const Duration(seconds: 2), () => auth.logout());
+        // HAPUS baris ini:
+        // Future.delayed(const Duration(seconds: 2), () => auth.logout());
+
+        // Ganti dengan:
+        auth.logout(); // biarkan AuthController yang handle
       } else if (response.statusCode == 403) {
         errorMessage.value = 'Profil karyawan tidak ditemukan. Hubungi admin.';
       }

@@ -3,9 +3,9 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:get_storage/get_storage.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
+import 'package:myabsensi_mobile/controllers/app_config.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:open_file/open_file.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -67,7 +67,6 @@ class SummaryAktivitas {
 // ─────────────────────────────────────────────────────────────────────────────
 class LaporanAktivitasController extends GetxController {
   final AuthController _auth = Get.find();
-  final box = GetStorage();
 
   // Filter state
   var tanggalMulai = DateTime.now().subtract(const Duration(days: 30)).obs;
@@ -87,14 +86,19 @@ class LaporanAktivitasController extends GetxController {
   var departments = <Map<String, dynamic>>[].obs;
   var tipeAktivitas = <Map<String, dynamic>>[].obs;
 
+  String _baseUrl = '';
+
   @override
   void onInit() {
     super.onInit();
-    _loadDropdowns();
-    fetchSummary();
+    _initAndLoad();
   }
 
-  String get _baseUrl => box.read('base_url') ?? '';
+  Future<void> _initAndLoad() async {
+    _baseUrl = await AppConfig.getBaseUrl();
+    await Future.wait([_loadDropdowns(), fetchSummary()]);
+  }
+
   String get _token => _auth.token.value;
 
   Map<String, String> get _headers => {

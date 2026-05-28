@@ -71,28 +71,18 @@ class FormatterUtil {
 
   static String getWajahImageUrl(String path) {
     if (path.isEmpty) return '';
-    const String baseUrl = 'http://192.168.0.100:8000';
-    if (path.startsWith('http')) {
-      if (path.contains('localhost'))
-        return path.replaceFirst('localhost', '192.168.0.100:8000');
-      return path;
-    }
+    const String baseUrl = 'https://karyaone.tech';
+    if (path.startsWith('http')) return path;
     if (path.startsWith('/storage')) return baseUrl + path;
     return '$baseUrl/storage/wajah/$path';
   }
 
   static String getWajahAdminImageUrl(String path, {String? baseUrl}) {
     if (path.isEmpty) return '';
-    const String defaultBaseUrl = 'http://192.168.0.100:8000';
+    const String defaultBaseUrl = 'https://karyaone.tech';
     final String finalBaseUrl = baseUrl ?? defaultBaseUrl;
     String cleanBaseUrl = finalBaseUrl.replaceAll('/api', '');
-    if (path.startsWith('http')) {
-      if (path.contains('localhost')) {
-        String ip = cleanBaseUrl.replaceAll('http://', '');
-        return path.replaceFirst('localhost', ip);
-      }
-      return path;
-    }
+    if (path.startsWith('http')) return path;
     if (path.startsWith('/storage')) return cleanBaseUrl + path;
     return '$cleanBaseUrl/storage/wajah/$path';
   }

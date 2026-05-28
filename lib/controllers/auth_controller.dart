@@ -26,16 +26,16 @@ class AuthController extends GetxController {
   @override
   void onInit() {
     super.onInit();
-    _initBaseUrl();
     _loadStoredData();
-    if (token.isNotEmpty) {
-      fetchProfile();
-    }
+    _initAndFetch();
   }
 
-  Future<void> _initBaseUrl() async {
-    _baseUrl = await AppConfig.getBaseUrl();
+  Future<void> _initAndFetch() async {
+    _baseUrl = await AppConfig.getBaseUrl(); // tunggu dulu
     await box.write('base_url', _baseUrl);
+    if (token.isNotEmpty) {
+      fetchProfile(); // baru fetch
+    }
   }
 
   Future<String> get _resolvedBaseUrl async {
@@ -444,6 +444,9 @@ class AuthController extends GetxController {
   // ===========================================================================
 
   Future<void> logout() async {
+    // Tambah ini di paling atas
+    debugPrint('=== LOGOUT DIPANGGIL ===');
+    debugPrint(StackTrace.current.toString());
     try {
       if (token.isNotEmpty) {
         final baseUrl = await _resolvedBaseUrl;

@@ -2,18 +2,26 @@ import 'dart:io';
 import 'package:device_info_plus/device_info_plus.dart';
 
 class AppConfig {
-  static const String _localIp = '192.168.0.100';
+  // Production
+  static const String _productionUrl = 'https://karyaone.tech/api';
+
+  // Development (aktifkan jika perlu testing lokal)
+  static const String _localIp = '192.1.172.51';
   static const String _port = '8000';
   static const String _apiPath = '/api';
 
+  // Ganti ke false saat production, true saat development lokal
+  static const bool _isDevelopment = true;
+
   static String? _cachedBaseUrl;
 
-  /// Mengembalikan baseUrl secara otomatis:
-  /// - Emulator Android → http://10.0.2.2:8000/api
-  /// - iOS Simulator    → http://localhost:8000/api
-  /// - HP Fisik         → http://192.168.1.12:8000/api
   static Future<String> getBaseUrl() async {
     if (_cachedBaseUrl != null) return _cachedBaseUrl!;
+
+    if (!_isDevelopment) {
+      _cachedBaseUrl = _productionUrl;
+      return _cachedBaseUrl!;
+    }
 
     try {
       final deviceInfo = DeviceInfoPlugin();
@@ -34,14 +42,12 @@ class AppConfig {
         _cachedBaseUrl = 'http://$_localIp:$_port$_apiPath';
       }
     } catch (e) {
-      // Fallback ke IP fisik jika deteksi gagal
       _cachedBaseUrl = 'http://$_localIp:$_port$_apiPath';
     }
 
     return _cachedBaseUrl!;
   }
 
-  /// Reset cache (berguna saat testing)
   static void resetCache() {
     _cachedBaseUrl = null;
   }

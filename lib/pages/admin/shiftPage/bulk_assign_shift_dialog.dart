@@ -15,7 +15,6 @@ class _BulkAssignShiftDialogState extends State<BulkAssignShiftDialog> {
   static const _purple = Color(0xFF5E35B1);
   static const _indigo = Color(0xFF311B92);
 
-  // Tab: 0 = Tersedia, 1 = Terpilih
   int _activeTab = 0;
 
   // Config shift
@@ -30,6 +29,13 @@ class _BulkAssignShiftDialogState extends State<BulkAssignShiftDialog> {
   final Set<int> _selectedIds = {};
   String _searchLeft = '';
   String _searchRight = '';
+
+  // ── FILTER BARU ───────────────────────────────────────────────
+  int? _filterPositionId;
+  int? _filterJobGradeId;
+  List<Map<String, dynamic>> _positionOptions = [];
+  List<Map<String, dynamic>> _jobGradeOptions = [];
+  // ─────────────────────────────────────────────────────────────
 
   // Snapshot lists
   List<Map<String, dynamic>> _employees = [];
@@ -50,7 +56,7 @@ class _BulkAssignShiftDialogState extends State<BulkAssignShiftDialog> {
   Future<void> _loadDropdowns() async {
     setState(() => _isLoading = true);
     await Future.wait([
-      widget.ctrl.fetchEmployeesDropdown(),
+      widget.ctrl.fetchEmployeesDropdownShift(),
       widget.ctrl.fetchShiftsDropdown(),
       widget.ctrl.fetchPatternsDropdown(),
     ]);
@@ -60,8 +66,40 @@ class _BulkAssignShiftDialogState extends State<BulkAssignShiftDialog> {
         _shifts = widget.ctrl.shiftsList.toList();
         _patterns = widget.ctrl.patternsList.toList();
         _isLoading = false;
+
+        // ── Ekstrak opsi filter unik dari data karyawan ──
+        _extractFilterOptions();
       });
     }
+  }
+
+  /// Ekstrak list position & job_grade unik dari employeesList
+  void _extractFilterOptions() {
+    final posMap = <int, Map<String, dynamic>>{};
+    final gradeMap = <int, Map<String, dynamic>>{};
+
+    for (final e in _employees) {
+      final pos = e['position'];
+      if (pos != null && pos['id'] != null) {
+        posMap[pos['id'] as int] = {
+          'id': pos['id'],
+          'name': pos['name'] ?? '-',
+        };
+      }
+      final grade = e['job_grade'];
+      if (grade != null && grade['id'] != null) {
+        gradeMap[grade['id'] as int] = {
+          'id': grade['id'],
+          'name': grade['name'] ?? '-',
+          'code': grade['code'] ?? '',
+        };
+      }
+    }
+
+    _positionOptions = posMap.values.toList()
+      ..sort((a, b) => (a['name'] as String).compareTo(b['name'] as String));
+    _jobGradeOptions = gradeMap.values.toList()
+      ..sort((a, b) => (a['name'] as String).compareTo(b['name'] as String));
   }
 
   @override
@@ -70,15 +108,29 @@ class _BulkAssignShiftDialogState extends State<BulkAssignShiftDialog> {
     super.dispose();
   }
 
-  // ── Helpers ───────────────────────────────────────────────────────────────
-
   String _fmt(DateTime d) =>
       '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+
+  // ── Filter logic ─────────────────────────────────────────────
 
   List<Map<String, dynamic>> get _filteredLeft {
     var list = _employees
         .where((e) => !_selectedIds.contains(e['id']))
         .toList();
+
+    // filter position
+    if (_filterPositionId != null) {
+      list = list
+          .where((e) => e['position']?['id'] == _filterPositionId)
+          .toList();
+    }
+    // filter job_grade
+    if (_filterJobGradeId != null) {
+      list = list
+          .where((e) => e['job_grade']?['id'] == _filterJobGradeId)
+          .toList();
+    }
+    // search teks
     if (_searchLeft.isNotEmpty) {
       final q = _searchLeft.toLowerCase();
       list = list.where((e) {
@@ -102,6 +154,11 @@ class _BulkAssignShiftDialogState extends State<BulkAssignShiftDialog> {
       return name.contains(q) || code.contains(q);
     }).toList();
   }
+
+  bool get _hasActiveFilter =>
+      _filterPositionId != null || _filterJobGradeId != null;
+
+  // ── Submit ────────────────────────────────────────────────────
 
   Future<void> _submit() async {
     if (_selectedIds.isEmpty) {
@@ -184,9 +241,9 @@ class _BulkAssignShiftDialogState extends State<BulkAssignShiftDialog> {
     );
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
+  // ─────────────────────────────────────────────────────────────
   // BUILD
-  // ─────────────────────────────────────────────────────────────────────────
+  // ─────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
@@ -206,7 +263,7 @@ class _BulkAssignShiftDialogState extends State<BulkAssignShiftDialog> {
     );
   }
 
-  // ── Header ────────────────────────────────────────────────────────────────
+  // ── Header ────────────────────────────────────────────────────
 
   Widget _buildHeader(BuildContext context) {
     return Container(
@@ -265,7 +322,7 @@ class _BulkAssignShiftDialogState extends State<BulkAssignShiftDialog> {
     );
   }
 
-  // ── Config Section (shift + tanggal) ─────────────────────────────────────
+  // ── Config Section ────────────────────────────────────────────
 
   Widget _buildConfigSection() {
     return Container(
@@ -276,7 +333,6 @@ class _BulkAssignShiftDialogState extends State<BulkAssignShiftDialog> {
         children: [
           const Divider(height: 1),
           const SizedBox(height: 12),
-
           // Mode toggle
           Container(
             decoration: BoxDecoration(
@@ -301,8 +357,6 @@ class _BulkAssignShiftDialogState extends State<BulkAssignShiftDialog> {
             ),
           ),
           const SizedBox(height: 10),
-
-          // Shift / Pattern dropdown
           if (!_usePattern)
             buildDropdown<int>(
               label: 'Pilih Shift',
@@ -336,8 +390,6 @@ class _BulkAssignShiftDialogState extends State<BulkAssignShiftDialog> {
               onChanged: (v) => setState(() => _patternId = v),
             ),
           const SizedBox(height: 10),
-
-          // Tanggal
           Row(
             children: [
               Expanded(
@@ -380,12 +432,9 @@ class _BulkAssignShiftDialogState extends State<BulkAssignShiftDialog> {
     );
   }
 
-  // ── Tab Bar ───────────────────────────────────────────────────────────────
+  // ── Tab Bar ───────────────────────────────────────────────────
 
   Widget _buildTabBar() {
-    final availCount = _filteredLeft.length;
-    final selCount = _selectedIds.length;
-
     return Container(
       color: Colors.white,
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 14),
@@ -399,13 +448,13 @@ class _BulkAssignShiftDialogState extends State<BulkAssignShiftDialog> {
           children: [
             _tabItem(
               label: 'Dapat Dipilih',
-              count: availCount,
+              count: _filteredLeft.length,
               isActive: _activeTab == 0,
               onTap: () => setState(() => _activeTab = 0),
             ),
             _tabItem(
               label: 'Terpilih',
-              count: selCount,
+              count: _selectedIds.length,
               isActive: _activeTab == 1,
               onTap: () => setState(() => _activeTab = 1),
             ),
@@ -474,7 +523,7 @@ class _BulkAssignShiftDialogState extends State<BulkAssignShiftDialog> {
     );
   }
 
-  // ── Body ──────────────────────────────────────────────────────────────────
+  // ── Body ──────────────────────────────────────────────────────
 
   Widget _buildBody() {
     if (_isLoading) {
@@ -495,21 +544,27 @@ class _BulkAssignShiftDialogState extends State<BulkAssignShiftDialog> {
     return _activeTab == 0 ? _buildLeftPanel() : _buildRightPanel();
   }
 
-  // ── Panel Tersedia ────────────────────────────────────────────────────────
+  // ── Panel Tersedia (dengan filter) ────────────────────────────
 
   Widget _buildLeftPanel() {
     final list = _filteredLeft;
     return Column(
       children: [
-        // Search
+        // Search bar
         Container(
           color: Colors.white,
-          padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+          padding: const EdgeInsets.fromLTRB(16, 10, 16, 8),
           child: _searchField(
             hint: 'Cari nama atau kode karyawan...',
             onChanged: (v) => setState(() => _searchLeft = v),
           ),
         ),
+
+        // ── FILTER CHIPS ─────────────────────────────────────────
+        if (_positionOptions.isNotEmpty || _jobGradeOptions.isNotEmpty)
+          _buildFilterBar(),
+        // ─────────────────────────────────────────────────────────
+
         // Action bar
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -530,10 +585,10 @@ class _BulkAssignShiftDialogState extends State<BulkAssignShiftDialog> {
               const Spacer(),
               GestureDetector(
                 onTap: () {
-                  setState(
-                    () => _selectedIds.addAll(list.map((e) => e['id'] as int)),
-                  );
-                  setState(() => _activeTab = 1);
+                  setState(() {
+                    _selectedIds.addAll(list.map((e) => e['id'] as int));
+                    _activeTab = 1;
+                  });
                 },
                 child: const Text(
                   'Pilih Semua →',
@@ -547,12 +602,13 @@ class _BulkAssignShiftDialogState extends State<BulkAssignShiftDialog> {
             ],
           ),
         ),
+
         // List
         Expanded(
           child: list.isEmpty
               ? _emptyState(
                   icon: Icons.people_outline,
-                  message: _searchLeft.isNotEmpty
+                  message: (_searchLeft.isNotEmpty || _hasActiveFilter)
                       ? 'Tidak ada hasil pencarian'
                       : 'Semua karyawan sudah dipilih',
                 )
@@ -585,13 +641,97 @@ class _BulkAssignShiftDialogState extends State<BulkAssignShiftDialog> {
     );
   }
 
-  // ── Panel Terpilih ────────────────────────────────────────────────────────
+  // ── Filter Bar ────────────────────────────────────────────────
+
+  Widget _buildFilterBar() {
+    return Container(
+      color: Colors.white,
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Row: label + tombol reset
+          Row(
+            children: [
+              Icon(
+                Icons.filter_alt_outlined,
+                size: 14,
+                color: _hasActiveFilter ? _purple : Colors.grey.shade400,
+              ),
+              const SizedBox(width: 4),
+              Text(
+                'Filter',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: _hasActiveFilter ? _purple : Colors.grey.shade500,
+                ),
+              ),
+              const Spacer(),
+              if (_hasActiveFilter)
+                GestureDetector(
+                  onTap: () => setState(() {
+                    _filterPositionId = null;
+                    _filterJobGradeId = null;
+                  }),
+                  child: Text(
+                    'Reset filter',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: Colors.red.shade400,
+                      decoration: TextDecoration.underline,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 6),
+
+          // Chips scroll horizontal
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                // ── Dropdown Position ──────────────────────────
+                _FilterDropdown(
+                  label: 'Posisi',
+                  icon: Icons.work_outline,
+                  selectedId: _filterPositionId,
+                  options: _positionOptions,
+                  displayText: (opt) => opt['name'] as String,
+                  onSelected: (id) => setState(() => _filterPositionId = id),
+                  activeColor: _purple,
+                ),
+                const SizedBox(width: 8),
+
+                // ── Dropdown Job Grade ─────────────────────────
+                _FilterDropdown(
+                  label: 'Job Grade',
+                  icon: Icons.grade_outlined,
+                  selectedId: _filterJobGradeId,
+                  options: _jobGradeOptions,
+                  displayText: (opt) {
+                    final code = opt['code'] as String? ?? '';
+                    final name = opt['name'] as String? ?? '';
+                    return code.isNotEmpty ? '$code - $name' : name;
+                  },
+                  onSelected: (id) => setState(() => _filterJobGradeId = id),
+                  activeColor: Colors.orange.shade700,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Panel Terpilih ────────────────────────────────────────────
 
   Widget _buildRightPanel() {
     final list = _filteredRight;
     return Column(
       children: [
-        // Search
         Container(
           color: Colors.white,
           padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
@@ -600,7 +740,6 @@ class _BulkAssignShiftDialogState extends State<BulkAssignShiftDialog> {
             onChanged: (v) => setState(() => _searchRight = v),
           ),
         ),
-        // Action bar
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           decoration: BoxDecoration(
@@ -636,7 +775,6 @@ class _BulkAssignShiftDialogState extends State<BulkAssignShiftDialog> {
             ],
           ),
         ),
-        // List
         Expanded(
           child: list.isEmpty
               ? _emptyState(
@@ -679,7 +817,7 @@ class _BulkAssignShiftDialogState extends State<BulkAssignShiftDialog> {
     );
   }
 
-  // ── Footer ────────────────────────────────────────────────────────────────
+  // ── Footer ────────────────────────────────────────────────────
 
   Widget _buildFooter(BuildContext context) {
     return Container(
@@ -702,7 +840,6 @@ class _BulkAssignShiftDialogState extends State<BulkAssignShiftDialog> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Progress bar
           if (_isSaving) ...[
             Row(
               children: [
@@ -800,7 +937,7 @@ class _BulkAssignShiftDialogState extends State<BulkAssignShiftDialog> {
     );
   }
 
-  // ── Reusable Widgets ──────────────────────────────────────────────────────
+  // ── Reusable Widgets ──────────────────────────────────────────
 
   Widget _modeTab(
     String label,
@@ -884,16 +1021,26 @@ class _BulkAssignShiftDialogState extends State<BulkAssignShiftDialog> {
   }) {
     final name = employee['full_name']?.toString() ?? '-';
     final code = employee['employee_code']?.toString() ?? '';
-    final position =
-        employee['position']?['name']?.toString() ??
-        employee['position']?.toString() ??
-        '';
+    final position = employee['position']?['name']?.toString() ?? '';
+    final grade = employee['job_grade'];
+    final gradeStr = grade != null
+        ? ((grade['code'] as String? ?? '').isNotEmpty
+              ? '${grade['code']} · ${grade['name']}'
+              : grade['name']?.toString() ?? '')
+        : '';
     final photoUrl = employee['photo_url']?.toString();
     final initials = name
         .split(' ')
         .take(2)
         .map((w) => w.isNotEmpty ? w[0].toUpperCase() : '')
         .join();
+
+    // Sub-label: gabung position & grade
+    final subParts = [
+      if (code.isNotEmpty) code,
+      if (position.isNotEmpty) position,
+      if (gradeStr.isNotEmpty) gradeStr,
+    ];
 
     return Material(
       color: bgColor,
@@ -942,10 +1089,7 @@ class _BulkAssignShiftDialogState extends State<BulkAssignShiftDialog> {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      [
-                        if (code.isNotEmpty) code,
-                        if (position.isNotEmpty) position,
-                      ].join(' · '),
+                      subParts.join(' · '),
                       style: TextStyle(
                         fontSize: 11,
                         color: Colors.grey.shade500,
@@ -1011,5 +1155,139 @@ class _BulkAssignShiftDialogState extends State<BulkAssignShiftDialog> {
         else
           _tanggalSelesai = picked;
       });
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// REUSABLE: Filter Dropdown Chip
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _FilterDropdown extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final int? selectedId;
+  final List<Map<String, dynamic>> options;
+  final String Function(Map<String, dynamic>) displayText;
+  final void Function(int?) onSelected;
+  final Color activeColor;
+
+  const _FilterDropdown({
+    required this.label,
+    required this.icon,
+    required this.selectedId,
+    required this.options,
+    required this.displayText,
+    required this.onSelected,
+    required this.activeColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isActive = selectedId != null;
+    final selected = isActive
+        ? options.firstWhere((o) => o['id'] == selectedId, orElse: () => {})
+        : null;
+    final chipLabel = (selected != null && selected.isNotEmpty)
+        ? displayText(selected)
+        : label;
+
+    return PopupMenuButton<int?>(
+      onSelected: onSelected,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      itemBuilder: (_) => [
+        // Opsi "Semua" untuk reset
+        PopupMenuItem<int?>(
+          value: null,
+          child: Row(
+            children: [
+              Icon(
+                Icons.clear_all,
+                size: 16,
+                color: isActive ? Colors.grey : activeColor,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'Semua $label',
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  color: isActive ? Colors.grey.shade600 : activeColor,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const PopupMenuDivider(),
+        ...options.map(
+          (opt) => PopupMenuItem<int?>(
+            value: opt['id'] as int,
+            child: Row(
+              children: [
+                Icon(
+                  icon,
+                  size: 15,
+                  color: opt['id'] == selectedId
+                      ? activeColor
+                      : Colors.grey.shade400,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    displayText(opt),
+                    style: TextStyle(
+                      fontWeight: opt['id'] == selectedId
+                          ? FontWeight.w700
+                          : FontWeight.normal,
+                      color: opt['id'] == selectedId
+                          ? activeColor
+                          : Colors.grey.shade700,
+                    ),
+                  ),
+                ),
+                if (opt['id'] == selectedId)
+                  Icon(Icons.check, size: 14, color: activeColor),
+              ],
+            ),
+          ),
+        ),
+      ],
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+        decoration: BoxDecoration(
+          color: isActive ? activeColor.withOpacity(0.1) : Colors.grey.shade100,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isActive
+                ? activeColor.withOpacity(0.4)
+                : Colors.grey.shade300,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              size: 14,
+              color: isActive ? activeColor : Colors.grey.shade500,
+            ),
+            const SizedBox(width: 5),
+            Text(
+              chipLabel,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
+                color: isActive ? activeColor : Colors.grey.shade600,
+              ),
+            ),
+            const SizedBox(width: 4),
+            Icon(
+              Icons.arrow_drop_down,
+              size: 16,
+              color: isActive ? activeColor : Colors.grey.shade500,
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }

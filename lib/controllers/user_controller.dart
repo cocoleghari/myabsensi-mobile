@@ -36,7 +36,13 @@ class UserController extends GetxController {
   @override
   void onInit() {
     super.onInit();
-    _initBaseUrl().then((_) => fetchUsers());
+    _initBaseUrl().then((_) {
+      // Hanya fetch jika user adalah admin/superadmin/hrd
+      final auth = Get.find<AuthController>();
+      if (auth.isAdmin || auth.isSuperAdmin || auth.isHrd) {
+        fetchUsers();
+      }
+    });
   }
 
   Future<void> _initBaseUrl() async {
@@ -91,8 +97,15 @@ class UserController extends GetxController {
 
         // Load sisa page di background tanpa blocking UI
         _fetchRemainingInBackground(baseUrl);
-      } else if (res.statusCode == 401 || res.statusCode == 403) {
+      } else if (res.statusCode == 401) {
+        // Token benar-benar expired/invalid → logout
         authController.logout();
+      } else if (res.statusCode == 403) {
+        // Tidak punya akses (employee bukan admin) → JANGAN logout
+        // Cukup skip saja, controller ini memang hanya untuk admin
+        debugPrint(
+          'UserController: user tidak punya akses admin, skip fetchUsers',
+        );
       }
     } catch (e) {
       debugPrint('fetchUsers error: $e');

@@ -4,6 +4,7 @@ import '../../../controllers/shift_controller.dart';
 import '../master_drawer.dart';
 import 'shift_shared_widgets.dart';
 import 'bulk_assign_shift_dialog.dart';
+import 'dart:async';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ASSIGN KARYAWAN PAGE
@@ -72,9 +73,22 @@ class _AssignKaryawanPageState extends State<AssignKaryawanPage> {
 
 // ── SEARCH BAR ────────────────────────────────────────────────────────────────
 
-class _SearchBar extends StatelessWidget {
+class _SearchBar extends StatefulWidget {
   final ShiftController ctrl;
   const _SearchBar({required this.ctrl});
+
+  @override
+  State<_SearchBar> createState() => _SearchBarState();
+}
+
+class _SearchBarState extends State<_SearchBar> {
+  Timer? _debounce;
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -94,7 +108,14 @@ class _SearchBar extends StatelessWidget {
           ),
           contentPadding: const EdgeInsets.symmetric(vertical: 10),
         ),
-        onChanged: (_) => ctrl.fetchEmployeeShifts(),
+        onChanged: (value) {
+          // Batalkan request sebelumnya, tunggu 500ms setelah berhenti ketik
+          _debounce?.cancel();
+          _debounce = Timer(const Duration(milliseconds: 500), () {
+            widget.ctrl.employeeShiftSearch.value = value;
+            widget.ctrl.fetchEmployeeShifts();
+          });
+        },
       ),
     );
   }
@@ -157,7 +178,9 @@ class _AssignCard extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.all(14),
         child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // ── Avatar ──────────────────────────────────────────
             CircleAvatar(
               radius: 22,
               backgroundColor: const Color(0xFFEDE7F6),
@@ -173,10 +196,13 @@ class _AssignCard extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 12),
+
+            // ── Info karyawan + shift ────────────────────────────
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // Nama
                   Text(
                     item.employeeName ?? '-',
                     style: const TextStyle(
@@ -184,12 +210,16 @@ class _AssignCard extends StatelessWidget {
                       fontSize: 14,
                       color: Color(0xFF1A1A2E),
                     ),
+                    overflow: TextOverflow.ellipsis,
                   ),
+                  // Kode karyawan
                   Text(
                     item.employeeCode ?? '',
                     style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
                   ),
                   const SizedBox(height: 4),
+
+                  // Nama shift
                   Row(
                     children: [
                       Icon(
@@ -200,26 +230,35 @@ class _AssignCard extends StatelessWidget {
                         color: Colors.blue,
                       ),
                       const SizedBox(width: 4),
-                      Text(
-                        item.shiftNama ?? item.shiftKode ?? '-',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: Colors.blue,
-                          fontWeight: FontWeight.w600,
+                      Expanded(
+                        child: Text(
+                          item.shiftNama ?? item.shiftKode ?? '-',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Colors.blue,
+                            fontWeight: FontWeight.w600,
+                          ),
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
-                      if (item.shiftJamMasuk != null) ...[
-                        Text(
-                          '  ${item.shiftJamMasuk} – ${item.shiftJamPulang}',
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: Colors.grey.shade500,
-                          ),
-                        ),
-                      ],
                     ],
                   ),
+
+                  // Jam masuk – jam pulang (baris terpisah supaya tidak overflow)
+                  if (item.shiftJamMasuk != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 1),
+                      child: Text(
+                        '${item.shiftJamMasuk} – ${item.shiftJamPulang}',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: Colors.grey.shade500,
+                        ),
+                      ),
+                    ),
+
                   const SizedBox(height: 2),
+                  // Tanggal mulai – selesai
                   Text(
                     '${item.tanggalMulai} '
                     '${item.tanggalSelesai != null ? '→ ${item.tanggalSelesai}' : '→ sekarang'}',
@@ -228,6 +267,8 @@ class _AssignCard extends StatelessWidget {
                 ],
               ),
             ),
+
+            // ── Badge + Action buttons ───────────────────────────
             Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
@@ -417,8 +458,9 @@ class _EditAssignDialogState extends State<_EditAssignDialog> {
     if (!mounted) return;
     setState(() => _loading = false);
     if (ok) {
-      Get.back();
-      await widget.ctrl.fetchEmployeeShifts();
+      await widget.ctrl.fetchEmployeeShifts(); // ← fetch dulu
+      if (!mounted) return;
+      Navigator.of(context, rootNavigator: true).pop();
     }
   }
 

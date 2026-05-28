@@ -250,6 +250,8 @@ class ShiftController extends GetxController {
   var isExporting = false.obs;
   var isImporting = false.obs;
 
+  var employeeShiftSearch = ''.obs;
+
   String _baseUrl = '';
 
   Future<String> get _resolvedBaseUrl async {
@@ -430,12 +432,17 @@ class ShiftController extends GetxController {
 
   // ── EMPLOYEE SHIFTS ────────────────────────────────────────────────────────
 
-  Future<void> fetchEmployeeShifts({int? employeeId}) async {
+  Future<void> fetchEmployeeShifts({int? employeeId, String? search}) async {
     isLoadingEmployeeShifts.value = true;
     try {
       final baseUrl = await _resolvedBaseUrl;
       final params = <String, String>{};
       if (employeeId != null) params['employee_id'] = employeeId.toString();
+
+      // ── kirim search ke backend ───────────────────────────────
+      final q = search ?? employeeShiftSearch.value;
+      if (q.isNotEmpty) params['search'] = q;
+      // ─────────────────────────────────────────────────────────
 
       final uri = Uri.parse(
         '$baseUrl/admin/employee-shifts',
@@ -640,6 +647,24 @@ class ShiftController extends GetxController {
           )
           .timeout(const Duration(seconds: 15));
 
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        employeesList.value = List<Map<String, dynamic>>.from(
+          data['data'] ?? [],
+        );
+      }
+    } catch (_) {}
+  }
+
+  Future<void> fetchEmployeesDropdownShift() async {
+    try {
+      final baseUrl = await _resolvedBaseUrl;
+      final response = await http
+          .get(
+            Uri.parse('$baseUrl/admin/employees-dropdown-shift'),
+            headers: _headers,
+          )
+          .timeout(const Duration(seconds: 15));
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         employeesList.value = List<Map<String, dynamic>>.from(

@@ -32,6 +32,11 @@ class PusatLokasiAssignController extends GetxController {
   var searchLeft = ''.obs;
   var searchRight = ''.obs;
 
+  var filterDepartmentIds = <int>{}.obs; // ← RxSet, bisa lebih dari 1
+
+  bool get hasActiveFilter => filterDepartmentIds.isNotEmpty;
+  List<Map<String, dynamic>> departmentOptions = [];
+
   var radiusMeter = 100.obs;
   var overwrite = false.obs;
 
@@ -56,6 +61,21 @@ class PusatLokasiAssignController extends GetxController {
   Future<void> _init() async {
     _baseUrl = await AppConfig.getBaseUrl();
     await Future.wait([_loadEmployees(), _loadAssignedEmployees()]);
+  }
+
+  void _extractDepartmentOptions() {
+    final deptMap = <int, Map<String, dynamic>>{};
+    for (final e in allEmployees) {
+      final dept = e['department'];
+      if (dept != null && dept['id'] != null) {
+        deptMap[dept['id'] as int] = {
+          'id': dept['id'],
+          'name': dept['name'] ?? dept['nama'] ?? '-',
+        };
+      }
+    }
+    departmentOptions = deptMap.values.toList()
+      ..sort((a, b) => (a['name'] as String).compareTo(b['name'] as String));
   }
 
   Future<void> _loadAssignedEmployees() async {
@@ -88,7 +108,8 @@ class PusatLokasiAssignController extends GetxController {
   Future<void> _loadEmployees() async {
     isLoadingEmployees.value = true;
     try {
-      final uri = Uri.parse('$_baseUrl/admin/employees-dropdown');
+      // ← ganti endpoint ke yang baru
+      final uri = Uri.parse('$_baseUrl/admin/employees-dropdown-lokasi');
 
       final res = await http
           .get(
@@ -105,6 +126,7 @@ class PusatLokasiAssignController extends GetxController {
         final raw = json['data'];
         if (raw is List) {
           allEmployees.value = List<Map<String, dynamic>>.from(raw);
+          _extractDepartmentOptions(); // ← ekstrak setelah data loaded
         }
       } else {
         _showError('Gagal memuat karyawan: ${res.statusCode}');
@@ -122,6 +144,15 @@ class PusatLokasiAssignController extends GetxController {
     var list = allEmployees
         .where((e) => !selectedIds.contains(e['id'] as int))
         .toList();
+
+    // ── filter multi department ────────────────────────────────
+    if (filterDepartmentIds.isNotEmpty) {
+      list = list.where((e) {
+        final deptId = e['department']?['id'];
+        return deptId != null && filterDepartmentIds.contains(deptId as int);
+      }).toList();
+    }
+    // ──────────────────────────────────────────────────────────
 
     final q = searchLeft.value.trim().toLowerCase();
     if (q.isNotEmpty) {
@@ -642,13 +673,17 @@ class _BulkAssignKaryawanModalState extends State<BulkAssignKaryawanModal> {
         Container(
           color: Colors.white,
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
-          // ✅ Pakai _leftSearchCtrl dari State — stabil selamanya
           child: _searchField(
             hint: 'Cari nama atau kode karyawan...',
             textCtrl: _leftSearchCtrl,
             onChanged: (v) => ctrl.searchLeft.value = v,
           ),
         ),
+
+        // ── FILTER DEPARTMENT ──────────────────────────────────
+        if (ctrl.departmentOptions.isNotEmpty) _buildFilterBar(),
+
+        // ──────────────────────────────────────────────────────
         Obx(
           () => Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -687,7 +722,9 @@ class _BulkAssignKaryawanModalState extends State<BulkAssignKaryawanModal> {
             if (list.isEmpty) {
               return _emptyState(
                 icon: Icons.people_outline,
-                message: ctrl.searchLeft.value.isNotEmpty
+                message:
+                    (ctrl.searchLeft.value.isNotEmpty ||
+                        ctrl.filterDepartmentIds.isNotEmpty) // ← ganti ini
                     ? 'Tidak ada hasil pencarian'
                     : 'Semua karyawan sudah dipilih',
               );
@@ -895,6 +932,315 @@ class _BulkAssignKaryawanModalState extends State<BulkAssignKaryawanModal> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildFilterBar() {
+    return Obx(() {
+      final isActive = ctrl.filterDepartmentIds.isNotEmpty;
+      final selectedCount = ctrl.filterDepartmentIds.length;
+
+      return Container(
+        color: Colors.white,
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  Icons.filter_alt_outlined,
+                  size: 14,
+                  color: isActive ? _blue : Colors.grey.shade400,
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  'Filter',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: isActive ? _blue : Colors.grey.shade500,
+                  ),
+                ),
+                const Spacer(),
+                if (isActive)
+                  GestureDetector(
+                    onTap: () => ctrl.filterDepartmentIds.clear(),
+                    child: Text(
+                      'Reset filter',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Colors.red.shade400,
+                        decoration: TextDecoration.underline,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 6),
+
+            // ── Chip yang membuka dialog checklist ──────────────
+            GestureDetector(
+              onTap: () => _showDepartmentFilterDialog(),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 150),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
+                decoration: BoxDecoration(
+                  color: isActive
+                      ? _blue.withOpacity(0.08)
+                      : Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: isActive
+                        ? _blue.withOpacity(0.4)
+                        : Colors.grey.shade300,
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.apartment_outlined,
+                      size: 14,
+                      color: isActive ? _blue : Colors.grey.shade500,
+                    ),
+                    const SizedBox(width: 5),
+                    Text(
+                      isActive
+                          ? '$selectedCount Departemen dipilih'
+                          : 'Departemen',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: isActive
+                            ? FontWeight.w700
+                            : FontWeight.w500,
+                        color: isActive ? _blue : Colors.grey.shade600,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Icon(
+                      Icons.arrow_drop_down,
+                      size: 16,
+                      color: isActive ? _blue : Colors.grey.shade500,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            // ── Chips yang sudah dipilih ─────────────────────────
+            if (isActive) ...[
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 6,
+                runSpacing: 4,
+                children: ctrl.filterDepartmentIds.map((id) {
+                  final dept = ctrl.departmentOptions.firstWhere(
+                    (d) => d['id'] == id,
+                    orElse: () => {'name': '-'},
+                  );
+                  return Chip(
+                    label: Text(
+                      dept['name'] as String,
+                      style: const TextStyle(fontSize: 11, color: Colors.white),
+                    ),
+                    backgroundColor: _blue,
+                    deleteIcon: const Icon(
+                      Icons.close,
+                      size: 14,
+                      color: Colors.white70,
+                    ),
+                    onDeleted: () => ctrl.filterDepartmentIds.remove(id),
+                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    visualDensity: VisualDensity.compact,
+                  );
+                }).toList(),
+              ),
+            ],
+          ],
+        ),
+      );
+    });
+  }
+
+  void _showDepartmentFilterDialog() {
+    // Snapshot pilihan saat ini — supaya bisa cancel
+    final temp = Set<int>.from(ctrl.filterDepartmentIds);
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Header
+              Container(
+                padding: const EdgeInsets.fromLTRB(20, 16, 12, 16),
+                decoration: const BoxDecoration(
+                  color: _blue,
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.apartment_outlined,
+                      color: Colors.white,
+                      size: 18,
+                    ),
+                    const SizedBox(width: 10),
+                    const Expanded(
+                      child: Text(
+                        'Pilih Departemen',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 15,
+                        ),
+                      ),
+                    ),
+                    if (temp.isNotEmpty)
+                      GestureDetector(
+                        onTap: () => setDialogState(() => temp.clear()),
+                        child: Text(
+                          'Reset',
+                          style: TextStyle(
+                            color: Colors.blue.shade100,
+                            fontSize: 12,
+                            decoration: TextDecoration.underline,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+
+              // List checklist
+              ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxHeight: MediaQuery.of(context).size.height * 0.45,
+                ),
+                child: ListView.separated(
+                  shrinkWrap: true,
+                  padding: const EdgeInsets.symmetric(vertical: 6),
+                  itemCount: ctrl.departmentOptions.length,
+                  separatorBuilder: (_, __) =>
+                      Divider(height: 1, color: Colors.grey.shade100),
+                  itemBuilder: (_, i) {
+                    final dept = ctrl.departmentOptions[i];
+                    final id = dept['id'] as int;
+                    final isChecked = temp.contains(id);
+
+                    return InkWell(
+                      onTap: () => setDialogState(() {
+                        isChecked ? temp.remove(id) : temp.add(id);
+                      }),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
+                        child: Row(
+                          children: [
+                            AnimatedContainer(
+                              duration: const Duration(milliseconds: 150),
+                              width: 22,
+                              height: 22,
+                              decoration: BoxDecoration(
+                                color: isChecked ? _blue : Colors.white,
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(
+                                  color: isChecked
+                                      ? _blue
+                                      : Colors.grey.shade300,
+                                  width: 2,
+                                ),
+                              ),
+                              child: isChecked
+                                  ? const Icon(
+                                      Icons.check,
+                                      size: 14,
+                                      color: Colors.white,
+                                    )
+                                  : null,
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                dept['name'] as String,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: isChecked
+                                      ? FontWeight.w600
+                                      : FontWeight.normal,
+                                  color: isChecked
+                                      ? _blue
+                                      : Colors.grey.shade800,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+
+              // Footer
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                child: Row(
+                  children: [
+                    Text(
+                      '${temp.length} dipilih',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey.shade500,
+                      ),
+                    ),
+                    const Spacer(),
+                    TextButton(
+                      onPressed: () => Navigator.pop(ctx),
+                      child: const Text('Batal'),
+                    ),
+                    const SizedBox(width: 8),
+                    ElevatedButton(
+                      onPressed: () {
+                        // Apply filter
+                        ctrl.filterDepartmentIds.value = temp;
+                        Navigator.pop(ctx);
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: _blue,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 10,
+                        ),
+                      ),
+                      child: const Text(
+                        'Terapkan',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
