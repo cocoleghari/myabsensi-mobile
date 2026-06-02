@@ -104,7 +104,10 @@ class _PreviewAbsensiPageState extends State<PreviewAbsensiPage>
 
       if (lat == null || lng == null) return;
 
-      final placemarks = await placemarkFromCoordinates(lat, lng);
+      // Tambah timeout agar tidak hang di iOS
+      final placemarks = await placemarkFromCoordinates(lat, lng)
+          .timeout(const Duration(seconds: 5));
+          
       if (placemarks.isNotEmpty && mounted) {
         final p = placemarks.first;
         _alamatPengajuan = [
@@ -116,8 +119,7 @@ class _PreviewAbsensiPageState extends State<PreviewAbsensiPage>
       }
     } catch (e) {
       debugPrint('Geocoding background error: $e');
-      // Fallback ke koordinat
-      _alamatPengajuan = widget.koordinatUser;
+      _alamatPengajuan = widget.koordinatUser; // fallback ke koordinat
     } finally {
       if (mounted) setState(() => _isGettingAlamat = false);
     }

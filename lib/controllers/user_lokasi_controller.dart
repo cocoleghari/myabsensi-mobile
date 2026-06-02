@@ -16,6 +16,7 @@ import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
 import 'app_config.dart';
 import 'auth_controller.dart';
 import 'package:myabsensi_mobile/pages/user/userPage/camera_page.dart';
+import 'package:image/image.dart' as img; // tambah di pubspec juga
 
 class UserLokasiController extends GetxController {
   final auth = Get.find<AuthController>();
@@ -204,12 +205,22 @@ class UserLokasiController extends GetxController {
     isDetectingFace.value = true;
 
     try {
-      final inputImage = InputImage.fromFile(imageFile);
+      // Fix orientasi gambar dari kamera depan
+      final bytes = await imageFile.readAsBytes();
+      final decoded = img.decodeImage(bytes);
+      if (decoded == null) return false;
+
+      // Fix EXIF rotation dan mirror kamera depan
+      final fixed = img.bakeOrientation(decoded);
+      final fixedFile = File(imageFile.path)
+        ..writeAsBytesSync(img.encodeJpg(fixed));
+
+      final inputImage = InputImage.fromFile(fixedFile);
       final options = FaceDetectorOptions(
         enableClassification: true,
         enableLandmarks: true,
         enableContours: true,
-        performanceMode: FaceDetectorMode.fast,
+        performanceMode: FaceDetectorMode.accurate, // ganti ke accurate
       );
 
       final faceDetector = FaceDetector(options: options);

@@ -11,7 +11,7 @@ class AppConfig {
   static const String _apiPath = '/api';
 
   // Ganti ke false saat production, true saat development lokal
-  static const bool _isDevelopment = true;
+  static const bool _isDevelopment = false;
 
   static String? _cachedBaseUrl;
 

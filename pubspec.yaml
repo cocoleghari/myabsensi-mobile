@@ -16,34 +16,35 @@ dependencies:
   pdf: ^3.10.0
   printing: ^5.14.2
   open_file: ^3.5.10
-  excel: ^2.0.7
-  font_awesome_flutter: ^10.4.0
-  geolocator: ^9.0.2
-  firebase_core: ^4.0.0
-  firebase_messaging: ^16.0.0
-  firebase_auth: ^6.0.1
-  google_sign_in: ^6.2.2
+  excel: ^4.0.6
+  font_awesome_flutter: ^11.0.0
+  geolocator: ^14.0.2
+  firebase_core: ^4.9.0
+  firebase_messaging: ^16.2.2
+  firebase_auth: ^6.5.1
+  google_sign_in: ^7.2.0
   flutter_launcher_icons: ^0.14.4
   get_storage: ^2.1.1
   google_maps_flutter: ^2.5.0
   image_picker: ^1.1.2
-  permission_handler: ^11.3.1
-  google_mlkit_face_detection: ^0.11.0
-  geocoding: ^2.1.0
+  permission_handler: ^12.0.1
+  google_mlkit_face_detection: ^0.13.2
+  geocoding: ^4.0.0
   url_launcher: ^6.1.14
-  device_info_plus: ^10.1.0
-  camera: ^0.11.0+2
+  device_info_plus: ^12.4.0
+  camera: ^0.12.0+1
   image_cropper: ^12.2.0
   cupertino_icons: ^1.0.8
   camera_web: ^0.3.2
   simple_web_camera: ^1.0.11
   cross_file: ^0.3.3+4
-  file_picker: ^8.1.2
+  file_picker: ^8.3.7
   path_provider: ^2.1.0
   dio: ^5.4.0
-  connectivity_plus: ^6.0.3
+  connectivity_plus: ^7.1.1
   uuid: ^4.4.0
-  flutter_native_splash: ^2.4.0 # ← pindah ke dependencies agar bisa dipanggil di main.dart
+  flutter_native_splash: ^2.4.0
+  image: ^4.3.0
 
 dev_dependencies:
   flutter_test:
